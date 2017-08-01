@@ -2,48 +2,55 @@
 # -*- mode: python -*-
 from __future__ import division, print_function
 import numpy as np
-from scipy import linalg
 
 t_refractory = 2
 
 
-def mat_matrix():
+def impulse_matrix_sym():
     """Calculate the matrix exponential for exact integration of MAT"""
     import sympy as spy
     t1, t2, tv, b, tm, delta = spy.symbols('tau1, tau2, tauv, beta, taum, delta')
-    A = - spy.Matrix(5,5, [1 / tm, 0, 0, 0, 0,
-                           0, 1 / t1, 0, 0, 0,
-                           0, 0, 1 / t2, 0, 0,
-                           0, 0, 0, 1 / tv, -1,
-                           b / tm, 0, 0, 0, 1 / tm])
-    # this is a monster
+    A = - spy.Matrix(5, 5, [1 / tm, 0, 0, 0, 0,
+                            0, 1 / t1, 0, 0, 0,
+                            0, 0, 1 / t2, 0, 0,
+                            0, 0, 0, 1 / tv, -1,
+                            b / tm, 0, 0, 0, 1 / tm])
+    # the exponent is a rather hairy monster that's probably harder to evaluate
+    # than the approximate version
 
 
-def integrate(params, state, current, dt):
-    """Integrate model with specified parameters, initial state, and forcing current
+def impulse_matrix(params, dt):
+    """Calculate the matrix exponential for integration of MAT model"""
+    from scipy import linalg
+    a1, a2, b, w, tm, R, t1, t2, tv = params
+    A = - np.matrix([[1 / tm, 0, 0, 0, 0],
+                     [0, 1 / t1, 0, 0, 0],
+                     [0, 0, 1 / t2, 0, 0],
+                     [0, 0, 0, 1 / tv, -1],
+                     [b / tm, 0, 0, 0, 1 / tv]])
+    return linalg.expm(A * dt)
+
+
+def predict(params, state, current, dt):
+    """Integrate model to predict spiking response
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
-    Note that this implementation implictly represents the driving current as a
+    Note that this implementation implicitly represents the driving current as a
     series of pulses, which may or may not be appropriate.
 
     parameters: 9-element sequence (α1, α2, β, ω, τm, R, τ1, τ2, and τV)
     state: 5-element sequence (V, θ1, θ2, θV, ddθV) [all zeros works fine]
-    current: a 1-D array of current values
+    current: a 1-D array of N current values
     dt: time step of forcing current, in ms
+
+    Returns an Nx5 array of the model state variables and a list of spike times
 
     """
     D = 5
     a1, a2, b, w, tm, R, t1, t2, tv = params
     v, h1, h2, hv, dhv = state
 
-    A = - np.matrix([[1 / tm, 0, 0, 0, 0],
-                     [0, 1 / t1, 0, 0, 0],
-                     [0, 0, 1 / t2, 0, 0],
-                     [0, 0, 0, 1 / tv, -1],
-                     [b / tm, 0, 0, 0, 1 / tv]])
-    # this could be calculated symbolically
-    Aexp = linalg.expm(A * dt)
-
+    Aexp = impulse_matrix(params, dt)
     N = current.size
     Y = np.zeros((N, D))
     x = np.zeros(D)
@@ -56,7 +63,7 @@ def integrate(params, state, current, dt):
             x[1] = a1
             x[2] = a2
             i_refractory = int(t_refractory * dt)
-            spikes.append(i)
+            spikes.append(i * dt)
         else:
             x[1] = x[2] = 0
             i_refractory -= 1
@@ -67,12 +74,12 @@ def integrate(params, state, current, dt):
     return Y, spikes
 
 
-def likelihood(params, state, current, dt, spikes):
-    """Integrate the model with a known spike train to evaluate the Poisson likelihood.
+def integrate(params, state, current, dt, spikes):
+    """Integrate the model with a known spike train.
 
-    This calculation assumes that the conditional probability of observing a
-    spike between t and t+Δ depends on the exponent of the difference between
-    the voltage and the threshold.
+    This function is used to evaluate the conditional probability of observing a
+    particular spike train, for example as the exponent of the difference
+    between the voltage and the threshold.
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
 
@@ -80,26 +87,21 @@ def likelihood(params, state, current, dt, spikes):
     state: 5-element sequence (V, θ1, θ2, θV, ddθV) [all zeros works fine]
     current: a 1-D array of current values
     dt: time step of forcing current, in ms
+    spikes: sequence of spike times, in ms
 
     """
     D = 5
     a1, a2, b, w, tm, R, t1, t2, tv = params
     v, h1, h2, hv, dhv = state
 
-    A = - np.matrix([[1 / tm, 0, 0, 0, 0],
-                     [0, 1 / t1, 0, 0, 0],
-                     [0, 0, 1 / t2, 0, 0],
-                     [0, 0, 0, 1 / tv, -1],
-                     [b / tm, 0, 0, 0, 1 / tv]])
-    # this could be calculated symbolically
-    Aexp = linalg.expm(A * dt)
-
+    Aexp = impulse_matrix(params, dt)
     N = current.size
     Y = np.zeros((N, D))
     x = np.zeros(D)
     y = np.asarray(state)
+    idx = (np.asarray(spikes) / dt).astype('i')
     spk = np.zeros(N)
-    spk[spikes] = 1
+    spk[idx] = 1
     for i in range(N):
         x[1] = spk[i] * a1
         x[2] = spk[i] * a2
@@ -108,3 +110,8 @@ def likelihood(params, state, current, dt, spikes):
         y = np.dot(Aexp, y) + x
         Y[i] = y
     return Y
+
+
+def loglikelihood(Y, omega):
+    """Evaluate the log likelihood of a spike given the path of the model"""
+    return Y[:, 0] - Y[:, 1] - Y[:, 2] - Y[:, 3] - omega
