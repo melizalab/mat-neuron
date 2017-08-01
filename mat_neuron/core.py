@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
+"""
+This module provides functions for integrating the MAT model
+"""
 from __future__ import division, print_function
 import numpy as np
 
@@ -74,44 +77,69 @@ def predict(params, state, current, dt):
     return Y, spikes
 
 
-def integrate(params, state, current, dt, spikes):
-    """Integrate the model with a known spike train.
+def predict_voltage(params, state, current, dt):
+    """Integrate just the current-dependent variables.
 
-    This function is used to evaluate the conditional probability of observing a
-    particular spike train, for example as the exponent of the difference
-    between the voltage and the threshold.
+    This function is usually called as a first step when evaluating the
+    log-likelihood of a spike train. Usually there are several trials for each
+    stimulus, so it's more efficient to predict the voltage and its derivative
+    from the current separately.
 
-    This method uses the exact integration method of Rotter and Diesmann (1999).
-
-    parameters: 9-element sequence (α1, α2, β, ω, τm, R, τ1, τ2, and τV)
-    state: 5-element sequence (V, θ1, θ2, θV, ddθV) [all zeros works fine]
-    current: a 1-D array of current values
-    dt: time step of forcing current, in ms
-    spikes: sequence of spike times, in ms
+    See predict() for specification of params and state arguments
 
     """
-    D = 5
+    D = 3
     a1, a2, b, w, tm, R, t1, t2, tv = params
-    v, h1, h2, hv, dhv = state
-
-    Aexp = impulse_matrix(params, dt)
+    v, _, _, hv, dhv = state
+    A = - np.matrix([[1 / tm, 0, 0],
+                     [0, 1 / tv, -1],
+                     [b / tm, 0, 1 / tv]])
+    Aexp = linalg.expm(A * dt)
+    y = np.asarray([v, hv, dhv], dtype='d')
     N = current.size
-    Y = np.zeros((N, D))
-    x = np.zeros(D)
-    y = np.asarray(state)
-    idx = (np.asarray(spikes) / dt).astype('i')
-    spk = np.zeros(N)
-    spk[idx] = 1
+    Y = np.zeros((N, D), dtype='d')
+    x = np.zeros(D, dtype='d')
     for i in range(N):
-        x[1] = spk[i] * a1
-        x[2] = spk[i] * a2
         x[0] = R / tm * current[i]
-        x[4] = R / tm * current[i] * b
+        x[2] = R / tm * current[i] * b
         y = np.dot(Aexp, y) + x
         Y[i] = y
     return Y
 
 
-def loglikelihood(Y, omega):
-    """Evaluate the log likelihood of a spike given the path of the model"""
-    return Y[:, 0] - Y[:, 1] - Y[:, 2] - Y[:, 3] - omega
+def predict_adaptation(params, state, spikes, dt, N):
+    """Predict the voltage-independent adaptation variables from known spike times.
+
+    This function is usually called as a second step when evaluating the
+    log-likelihood of a spike train.
+
+    See predict() for specification of params and state arguments
+
+    """
+    D = 2
+    a1, a2, b, w, tm, R, t1, t2, tv = params
+    _, h1, h2, _, _ = state
+    # the system matrix is purely diagonal, so these are exact solutions
+    A1 = np.exp(-dt / t1)
+    A2 = np.exp(-dt / t2)
+    y = np.asarray([h1, h2], dtype='d')
+    Y = np.zeros((N, D), dtype='d')
+    idx = (np.asarray(spikes) / dt).astype('i')
+    spk = np.zeros(N)
+    spk[idx] = 1
+    for i in range(N):
+        y[0] = A1 * y[0] + a1 * spk[i]
+        y[1] = A2 * y[1] + a2 * spk[i]
+        Y[i] = y
+    return Y
+
+
+def loglike_exp(V, H, params):
+    """Evaluate the log likelihood of spiking with an exponential link function.
+
+    V: 2D array with voltage and θV in the first two columns
+    H: 2D array with θ1 and θ2 in the first two columns
+    params: list of parameters (see predict() for specification)
+
+    """
+    return V[:, 0] - H[:, 0] - H[:, 1] - V[:, 1] - params[3]
