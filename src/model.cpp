@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 // -*- mode: c++ -*-
-#include <array>
 #include <cmath>
+#include <random>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
@@ -19,13 +19,37 @@ typedef Eigen::Matrix<double, D_FULL, 1> state_full_type;
 typedef Eigen::Matrix<double, D_VOLT, D_VOLT> propmat_volt_type;
 typedef Eigen::Matrix<double, D_VOLT, 1> state_volt_type;
 
+namespace spikers {
+
+struct deterministic {
+        bool operator()(value_type V, value_type H, time_type dt) {
+                return V > H;
+        }
+};
+
+struct poisson {
+
+        poisson() : _udist(0,1) {}
+
+        bool operator()(value_type V, value_type H, time_type dt) {
+                value_type prob = exp(V - H) * dt;
+                return _udist(_generator) < prob;
+        }
+        std::default_random_engine _generator;
+        std::uniform_real_distribution<double> _udist;
+
+};
+
+}
+
 
 /*
  * The core of the prediction routine. You'll need to precalculate the
- * propagator matrix.
+ * propagator/impulse matrix.
  *
  * params: a1, a2, b, w, tm, R, t1, t2, tv, tref
  */
+template<typename Spiker>
 py::tuple
 predict(state_full_type state,
         const propmat_full_type Aexp,
@@ -33,6 +57,7 @@ predict(state_full_type state,
         const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
         time_type dt)
 {
+        Spiker spiker;
         auto I = current.unchecked<1>();
         auto P = params.unchecked<1>();
         if (P.size() < 10)
@@ -47,7 +72,7 @@ predict(state_full_type state,
         size_t iref = 0;
         for (size_t i = 0; i < N; ++i) {
                 double h = state[1] + state[2] + state[3] + P[3];
-                if (i > iref && state[0] > h) {
+                if (i > iref && spiker(state[0], h, dt)) {
                         x[1] = P[0];
                         x[2] = P[1];
                         iref = i + i_refrac;
@@ -125,7 +150,8 @@ predict_adaptation(state_full_type state,
 PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
 
-        m.def("predict", &predict);
+        m.def("predict", &predict<spikers::deterministic>);
+        m.def("predict_stochastic", &predict<spikers::poisson>);
         m.def("predict_voltage", &predict_voltage);
         m.def("predict_adaptation", &predict_adaptation);
 
