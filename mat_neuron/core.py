@@ -58,12 +58,10 @@ def predict_voltage(state, params, current, dt):
     """
     from mat_neuron import _model
     Aexp = impulse_matrix(params, dt, reduced=True)
-    v, _, _, hv, dhv = state
-    y = np.asarray([v, hv, dhv], dtype='d')
-    return _model.predict_voltage(y, Aexp, params, current, dt)
+    return _model.predict_voltage(state, Aexp, params, current, dt)
 
 
-def predict_adaptation(params, state, spikes, dt, N):
+def predict_adaptation(state, params, spikes, dt, N):
     """Predict the voltage-independent adaptation variables from known spike times.
 
     This function is usually called as a second step when evaluating the
@@ -72,22 +70,11 @@ def predict_adaptation(params, state, spikes, dt, N):
     See predict() for specification of params and state arguments
 
     """
-    D = 2
-    a1, a2, b, w, tm, R, t1, t2, tv = params
-    _, h1, h2, _, _ = state
-    # the system matrix is purely diagonal, so these are exact solutions
-    A1 = np.exp(-dt / t1)
-    A2 = np.exp(-dt / t2)
-    y = np.asarray([h1, h2], dtype='d')
-    Y = np.zeros((N, D), dtype='d')
+    from mat_neuron import _model
     idx = (np.asarray(spikes) / dt).astype('i')
     spk = np.zeros(N)
     spk[idx] = 1
-    for i in range(N):
-        y[0] = A1 * y[0] + a1 * spk[i]
-        y[1] = A2 * y[1] + a2 * spk[i]
-        Y[i] = y
-    return Y
+    return _model.predict_adaptation(state, params, spk, dt)
 
 
 def loglike_exp(V, H, params):
