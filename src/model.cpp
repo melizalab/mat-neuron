@@ -67,7 +67,7 @@ predict(state_full_type state,
 }
 
 
-PYBIND11_PLUGIN(modelo) {
+PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
 
         m.def("predict", &predict);

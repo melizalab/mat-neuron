@@ -36,8 +36,8 @@ if sys.platform == 'darwin':
 
 ext_modules = [
     Extension(
-        'mat_neuron.modelo',
-        ['src/modelo.cpp'],
+        'mat_neuron._model',
+        ['src/model.cpp'],
         include_dirs= include_dirs,
         language='c++'
     ),
