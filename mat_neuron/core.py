@@ -25,7 +25,7 @@ def impulse_matrix_sym():
 def impulse_matrix(params, dt):
     """Calculate the matrix exponential for integration of MAT model"""
     from scipy import linalg
-    a1, a2, b, w, tm, R, t1, t2, tv = params
+    a1, a2, b, w, tm, R, t1, t2, tv, tref = params
     A = - np.matrix([[1 / tm, 0, 0, 0, 0],
                      [0, 1 / t1, 0, 0, 0],
                      [0, 0, 1 / t2, 0, 0],
@@ -34,7 +34,7 @@ def impulse_matrix(params, dt):
     return linalg.expm(A * dt)
 
 
-def predict(params, state, current, dt):
+def predict(state, Aexp, params, current, dt):
     """Integrate model to predict spiking response
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
@@ -50,10 +50,10 @@ def predict(params, state, current, dt):
 
     """
     D = 5
-    a1, a2, b, w, tm, R, t1, t2, tv = params
+    a1, a2, b, w, tm, R, t1, t2, tv, tref = params
     v, h1, h2, hv, dhv = state
 
-    Aexp = impulse_matrix(params, dt)
+    # Aexp = impulse_matrix(params, dt)
     N = current.size
     Y = np.zeros((N, D))
     x = np.zeros(D)

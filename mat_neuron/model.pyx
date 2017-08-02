@@ -32,7 +32,7 @@ def impulse_matrix(params, double dt):
 
 @boundscheck(False)
 @wraparound(False)
-def predict(params, state, np.ndarray[DTYPE_t] current, double dt):
+def predict(state, Aexp, params, np.ndarray[DTYPE_t] current, double dt):
     """Integrate model to predict spiking response
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
@@ -53,7 +53,6 @@ def predict(params, state, np.ndarray[DTYPE_t] current, double dt):
     cdef int i_refractory = int(t_refractory / dt)
     a1, a2, b, w, tm, R = params[:6]
 
-    cdef np.ndarray[DTYPE_t, ndim=2] Aexp = impulse_matrix(params, dt)
     cdef int N = current.size
     cdef np.ndarray[DTYPE_t, ndim=2] Y = np.zeros((N, D))
     cdef np.ndarray[DTYPE_t, ndim=1] x = np.zeros(D)
