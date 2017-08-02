@@ -28,16 +28,13 @@ struct deterministic {
 };
 
 struct poisson {
-
         poisson() : _udist(0,1) {}
-
         bool operator()(value_type V, value_type H, time_type dt) {
                 value_type prob = exp(V - H) * dt;
                 return _udist(_generator) < prob;
         }
         std::default_random_engine _generator;
         std::uniform_real_distribution<double> _udist;
-
 };
 
 }
@@ -52,7 +49,7 @@ struct poisson {
 template<typename Spiker>
 py::tuple
 predict(state_full_type state,
-        const propmat_full_type Aexp,
+        Eigen::Ref<const propmat_full_type> Aexp,
         const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
         const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
         time_type dt)
@@ -93,7 +90,7 @@ predict(state_full_type state,
 
 py::array
 predict_voltage(state_full_type state,
-                const propmat_volt_type Aexp,
+                Eigen::Ref<const propmat_full_type> Aexp,
                 const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
                 const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
                 time_type dt)
@@ -151,7 +148,14 @@ PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
 
         m.def("predict", &predict<spikers::deterministic>);
-        m.def("predict_stochastic", &predict<spikers::poisson>);
+              // [](state_full_type state,
+              //    const propmat_full_type Aexp,
+              //    const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
+              //    const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
+              //    time_type dt,) {
+              //         spikers::deterministic s;
+              //         return predict(state, Aexp, params, current,
+        // m.def("predict_stochastic", &predict<spikers::poisson>);
         m.def("predict_voltage", &predict_voltage);
         m.def("predict_adaptation", &predict_adaptation);
 
