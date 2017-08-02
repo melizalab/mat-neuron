@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
+import os
 import sys
 if sys.hexversion < 0x02070000:
     raise RuntimeError("Python 2.7 or higher required")
@@ -22,8 +23,8 @@ except ImportError:
 compiler_settings = {
     'include_dirs' : [numpy_include]
     }
-# _spikes = Extension('quickspikes.spikes', sources=['quickspikes/spikes' + SUFFIX],
-#                     **compiler_settings)
+_model = Extension('mat_neuron.model', sources=['mat_neuron/model' + SUFFIX],
+                    **compiler_settings)
 
 
 VERSION = '0.1.0'
@@ -41,7 +42,7 @@ setup(
     name="mat-neuron",
     version=VERSION,
     packages=find_packages(exclude=["*test*"]),
-    # ext_modules = [_spikes],
+    ext_modules = [_model],
     cmdclass = {'build_ext': build_ext},
 
     description="Python code to integrate and evaluate likelihood for MAT neuron model",
@@ -50,7 +51,7 @@ setup(
     install_requires = [
         "numpy>=1.10",
         "scipy>=0.10"
-    ]
+    ],
 
     author="Tyler Robbins",
     maintainer='C Daniel Meliza',
