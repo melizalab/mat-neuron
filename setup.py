@@ -32,6 +32,8 @@ include_dirs = [get_pybind_include(),
 
 if sys.platform == 'darwin':
     include_dirs.append("/opt/local/include/eigen3")
+elif sys.platform == 'linux2':
+    include_dirs.append("/usr/include/eigen3")
 
 
 ext_modules = [
