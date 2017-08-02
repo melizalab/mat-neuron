@@ -7,15 +7,20 @@ from __future__ import division, print_function
 import numpy as np
 
 
-def impulse_matrix(params, dt):
+def impulse_matrix(params, dt, reduced=False):
     """Calculate the matrix exponential for integration of MAT model"""
     from scipy import linalg
     a1, a2, b, w, tm, R, t1, t2, tv, tref = params
-    A = - np.matrix([[1 / tm, 0, 0, 0, 0],
-                     [0, 1 / t1, 0, 0, 0],
-                     [0, 0, 1 / t2, 0, 0],
-                     [0, 0, 0, 1 / tv, -1],
-                     [b / tm, 0, 0, 0, 1 / tv]])
+    if not reduced:
+        A = - np.matrix([[1 / tm, 0, 0, 0, 0],
+                         [0, 1 / t1, 0, 0, 0],
+                         [0, 0, 1 / t2, 0, 0],
+                         [0, 0, 0, 1 / tv, -1],
+                         [b / tm, 0, 0, 0, 1 / tv]])
+    else:
+        A = - np.matrix([[1 / tm, 0, 0],
+                         [0, 1 / tv, -1],
+                         [b / tm, 0, 1 / tv]])
     return linalg.expm(A * dt)
 
 
@@ -40,7 +45,7 @@ def predict(state, params, current, dt):
     return _model.predict(state, Aexp, params, current, dt)
 
 
-def predict_voltage(params, state, current, dt):
+def predict_voltage(state, params, current, dt):
     """Integrate just the current-dependent variables.
 
     This function is usually called as a first step when evaluating the
@@ -51,23 +56,11 @@ def predict_voltage(params, state, current, dt):
     See predict() for specification of params and state arguments
 
     """
-    D = 3
-    a1, a2, b, w, tm, R, t1, t2, tv = params
+    from mat_neuron import _model
+    Aexp = impulse_matrix(params, dt, reduced=True)
     v, _, _, hv, dhv = state
-    A = - np.matrix([[1 / tm, 0, 0],
-                     [0, 1 / tv, -1],
-                     [b / tm, 0, 1 / tv]])
-    Aexp = linalg.expm(A * dt)
     y = np.asarray([v, hv, dhv], dtype='d')
-    N = current.size
-    Y = np.zeros((N, D), dtype='d')
-    x = np.zeros(D, dtype='d')
-    for i in range(N):
-        x[0] = R / tm * current[i]
-        x[2] = R / tm * current[i] * b
-        y = np.dot(Aexp, y) + x
-        Y[i] = y
-    return Y
+    return _model.predict_voltage(y, Aexp, params, current, dt)
 
 
 def predict_adaptation(params, state, spikes, dt, N):

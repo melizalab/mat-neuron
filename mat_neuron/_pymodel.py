@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 """ Python reference implementations of model code"""
+from __future__ import division, print_function, absolute_import
+import numpy as np
 
-def predict(state, Aexp, params, current, dt):
+from mat_neuron.core import impulse_matrix
+
+
+def predict(state, params, current, dt):
     """Integrate model to predict spiking response
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
@@ -21,7 +26,7 @@ def predict(state, Aexp, params, current, dt):
     a1, a2, b, w, tm, R, t1, t2, tv, tref = params
     v, h1, h2, hv, dhv = state
 
-    # Aexp = impulse_matrix(params, dt)
+    Aexp = impulse_matrix(params, dt)
     N = current.size
     Y = np.zeros((N, D))
     x = np.zeros(D)
@@ -45,7 +50,7 @@ def predict(state, Aexp, params, current, dt):
     return Y, spikes
 
 
-def predict_voltage(params, state, current, dt):
+def predict_voltage(state, params, current, dt):
     """Integrate just the current-dependent variables.
 
     This function is usually called as a first step when evaluating the
@@ -57,12 +62,9 @@ def predict_voltage(params, state, current, dt):
 
     """
     D = 3
-    a1, a2, b, w, tm, R, t1, t2, tv = params
+    a1, a2, b, w, tm, R, t1, t2, tv, tref = params
+    Aexp = impulse_matrix(params, dt, reduced=True)
     v, _, _, hv, dhv = state
-    A = - np.matrix([[1 / tm, 0, 0],
-                     [0, 1 / tv, -1],
-                     [b / tm, 0, 1 / tv]])
-    Aexp = linalg.expm(A * dt)
     y = np.asarray([v, hv, dhv], dtype='d')
     N = current.size
     Y = np.zeros((N, D), dtype='d')

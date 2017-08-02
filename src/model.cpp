@@ -66,11 +66,39 @@ predict(state_full_type state,
 
 }
 
+py::array
+predict_voltage(state_volt_type state,
+                const propmat_volt_type Aexp,
+                const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
+                const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
+        time_type dt)
+{
+        auto I = current.unchecked<1>();
+        auto P = params.unchecked<1>();
+        if (P.size() < 10)
+                throw std::domain_error("error: param array size < 10");
+        const size_t N = current.shape(0);
+
+        state_volt_type x;
+        py::array_t<value_type> Y({N, D_VOLT});
+        auto Yptr = Y.mutable_unchecked<2>();
+        for (size_t i = 0; i < N; ++i) {
+                x[0] = P[5] / P[4] * I[i];
+                x[2] = x[0] * P[2];
+                state = Aexp * state + x;
+                for (size_t j = 0; j < D_VOLT; ++j)
+                        Yptr(i, j) = state.coeff(j);
+        }
+        return Y;
+}
+
+
 
 PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
 
         m.def("predict", &predict);
+        m.def("predict_voltage", &predict_voltage);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = py::str(VERSION_INFO);
