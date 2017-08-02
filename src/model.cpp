@@ -90,7 +90,7 @@ predict(state_full_type state,
 
 py::array
 predict_voltage(state_full_type state,
-                Eigen::Ref<const propmat_full_type> Aexp,
+                Eigen::Ref<const propmat_volt_type> Aexp,
                 const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
                 const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
                 time_type dt)

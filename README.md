@@ -5,4 +5,8 @@ This project is a python implementation of the multi-timescale adaptive threshol
 - deterministic and stochastic simulations of spiking responses to time-varying driving currents
 - evaluating the likelihood of a spike train conditional on parameters, initial state, and driving current
 
-Performance-critical parts of the integration are implemented using the [Eigen](http://eigen.tuxfamily.org/) C++ linear algebra library. The C++ code is wrapped using [pybind11](https://github.com/pybind/pybind11). You will need to have a C++11-compliant compiler and install Eigen (version 3 or later) in order to use this package.
+Performance-critical parts of the integration are implemented using the [Eigen](http://eigen.tuxfamily.org/) C++ linear algebra library. The C++ code is wrapped using [pybind11](https://github.com/pybind/pybind11). You will need to have a C++11-compliant compiler and install Eigen (version 3.2.7 or later) in order to use this package. If your system package manager does not supply a recent enough version, you can just clone the eigen package into the `include` directory:
+
+``` bash
+    hg clone https://bitbucket.org/eigen/eigen/
+```

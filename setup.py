@@ -28,7 +28,8 @@ class get_pybind_include(object):
 
 
 include_dirs = [get_pybind_include(),
-                get_pybind_include(user=True)]
+                get_pybind_include(user=True),
+                "include/eigen"]
 
 if sys.platform == 'darwin':
     include_dirs.append("/opt/local/include/eigen3")
@@ -125,7 +126,7 @@ setup(
     install_requires = [
         "numpy>=1.10",
         "scipy>=0.10",
-        "pybind11>=1.7"
+        "pybind11>=2.1"
     ],
 
     author="Tyler Robbins",
