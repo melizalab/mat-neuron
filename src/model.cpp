@@ -102,7 +102,7 @@ predict_voltage(state_full_type state,
         const size_t N = I.size();
 
         state_volt_type y(state[0], state[3], state[4]);
-        state_volt_type x;
+        state_volt_type x(0, 0, 0);
 
         py::array_t<value_type> Y({N, D_VOLT});
         auto Yptr = Y.mutable_unchecked<2>();
