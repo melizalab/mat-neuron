@@ -21,7 +21,7 @@ def test_step_response():
 
 
 def test_phasic_response():
-    params = [10, 2, -0.3, 5, 10, 10, 10, 200, 5, 2]
+    params = np.asarray([10, 2, -0.3, 5, 10, 10, 10, 200, 5, 2])
     I = np.zeros(2000, dtype='d')
     I[500:1500] = 0.45
     Y, S = core.predict(state, params, I, dt)
@@ -31,7 +31,7 @@ def test_phasic_response():
 
 
 def test_predict_voltage():
-    params = [10, 2, 0, 5, 10, 10, 10, 200, 5, 2]
+    params = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
     I = np.zeros(2000, dtype='d')
     I[500:1500] = 0.5
     Y, S = core.predict(state, params, I, dt)
@@ -43,10 +43,10 @@ def test_predict_voltage():
 
 
 def test_predict_adaptation():
-    params = [10, 2, 0, 5, 10, 10, 10, 200, 5, 2]
+    params = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
     I = np.zeros(2000, dtype='d')
     I[500:1500] = 0.5
-    Y, S = core.predict(state, params, I, dt)
+    Y, S = core.predict(np.asarray(state), params, I, dt)
     H = core.predict_adaptation(state, params, S, dt, I.size)
 
     assert_true(all(np.abs(Y[:,1] - H[:,0]) < 1e-6))
