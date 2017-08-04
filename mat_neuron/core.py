@@ -24,7 +24,7 @@ def impulse_matrix(params, dt, reduced=False):
     return linalg.expm(A * dt)
 
 
-def predict(state, params, current, dt):
+def predict(state, params, current, dt, Aexp=None):
     """Integrate model to predict spiking response
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
@@ -41,12 +41,12 @@ def predict(state, params, current, dt):
 
     """
     from mat_neuron import _model
-
-    Aexp = impulse_matrix(params, dt)
+    if Aexp is None:
+        Aexp = impulse_matrix(params, dt)
     return _model.predict(np.asarray(state), Aexp, np.asarray(params), current, dt)
 
 
-def predict_voltage(state, params, current, dt):
+def predict_voltage(state, params, current, dt, Aexp=None):
     """Integrate just the current-dependent variables.
 
     This function is usually called as a first step when evaluating the
@@ -60,7 +60,8 @@ def predict_voltage(state, params, current, dt):
 
     """
     from mat_neuron import _model
-    Aexp = impulse_matrix(params, dt, reduced=True)
+    if Aexp is None:
+        Aexp = impulse_matrix(params, dt, reduced=True)
     return _model.predict_voltage(state, Aexp, params, current, dt)
 
 
@@ -87,7 +88,7 @@ def predict_adaptation(state, params, spikes, dt, N=None):
 
 
 def loglike_exp(V, H, params):
-    """Evaluate the log likelihood of spiking with an exponential link function.
+    """Evaluate the log likelihood of spiking (V - H - omega)
 
     V: 2D array with voltage and θV in the first two columns
     H: 2D array with θ1 and θ2 in the first two columns

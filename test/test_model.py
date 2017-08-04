@@ -62,5 +62,6 @@ def test_predict_adaptation_sparray():
     spk[S] = 1
     H = core.predict_adaptation(state, params, spk, dt)
 
+
     assert_true(all(np.abs(Y[:,1] - H[:,0]) < 1e-6))
     assert_true(all(np.abs(Y[:,2] - H[:,1]) < 1e-6))
