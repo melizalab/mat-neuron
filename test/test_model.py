@@ -51,3 +51,16 @@ def test_predict_adaptation():
 
     assert_true(all(np.abs(Y[:,1] - H[:,0]) < 1e-6))
     assert_true(all(np.abs(Y[:,2] - H[:,1]) < 1e-6))
+
+
+def test_predict_adaptation_sparray():
+    params = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
+    I = np.zeros(2000, dtype='d')
+    I[500:1500] = 0.5
+    Y, S = core.predict(np.asarray(state), params, I, dt)
+    spk = np.zeros(I.size, dtype='i')
+    spk[S] = 1
+    H = core.predict_adaptation(state, params, spk, dt)
+
+    assert_true(all(np.abs(Y[:,1] - H[:,0]) < 1e-6))
+    assert_true(all(np.abs(Y[:,2] - H[:,1]) < 1e-6))

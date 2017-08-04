@@ -64,20 +64,25 @@ def predict_voltage(state, params, current, dt):
     return _model.predict_voltage(state, Aexp, params, current, dt)
 
 
-def predict_adaptation(state, params, spikes, dt, N):
+def predict_adaptation(state, params, spikes, dt, N=None):
     """Predict the voltage-independent adaptation variables from known spike times.
 
     This function is usually called as a second step when evaluating the
     log-likelihood of a spike train.
 
-    See predict() for specification of params and state arguments. Spike times
-    need to be specified as integral indices (i.e., int(t / dt))
+    See predict() for specification of params and state arguments.
+
+    `spikes`: a sequence of times (i.e., int(t / dt)) or an array of 0's and 1's.
+    `N`: must be not None if `spikes` is a sequence of times
 
     """
     from mat_neuron import _model
-    idx = (np.asarray(spikes) / dt).astype('i')
-    spk = np.zeros(N, dtype='i')
-    spk[idx] = 1
+    if N is None and isinstance(spikes, np.ndarray):
+        spk = spikes
+    else:
+        idx = np.asarray(spikes, dtype='i')
+        spk = np.zeros(N, dtype='i')
+        spk[idx] = 1
     return _model.predict_adaptation(state, params, spk, dt)
 
 
