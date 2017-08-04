@@ -62,6 +62,28 @@ def test_predict_adaptation_sparray():
     spk[S] = 1
     H = core.predict_adaptation(state, params, spk, dt)
 
-
     assert_true(all(np.abs(Y[:,1] - H[:,0]) < 1e-6))
     assert_true(all(np.abs(Y[:,2] - H[:,1]) < 1e-6))
+
+
+def test_likelihood():
+    I = np.zeros(2000, dtype='d')
+    I[500:1500] = 0.5
+
+    params_true = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
+    Y_true, S_obs = core.predict(state, params_true, I, dt)
+
+    V_true = core.predict_voltage(state, params_true, I, dt)
+    H_true = core.predict_adaptation(state, params_true, S_obs, dt, I.size)
+    lci_true = core.log_intensity(V_true, H_true, params_true)
+
+    params_guess = np.asarray([10, 2, -1, 5, 10, 10, 10, 200, 5, 2])
+    V_guess = core.predict_voltage(state, params_guess, I, dt)
+    H_guess = core.predict_adaptation(state, params_guess, S_obs, dt, I.size)
+
+    lci_guess = core.log_intensity(V_guess, H_guess, params_guess)
+
+    ll_true = np.sum(lci_true[S_obs]) - np.sum(np.exp(lci_true))
+    ll_guess = np.sum(lci_guess[S_obs]) - np.sum(np.exp(lci_guess))
+
+    assert_true(ll_true > ll_guess)

@@ -78,7 +78,7 @@ def predict_adaptation(state, params, spikes, dt, N=None):
 
     """
     from mat_neuron import _model
-    if N is None and isinstance(spikes, np.ndarray):
+    if N is None:
         spk = spikes
     else:
         idx = np.asarray(spikes, dtype='i')
@@ -87,8 +87,8 @@ def predict_adaptation(state, params, spikes, dt, N=None):
     return _model.predict_adaptation(state, params, spk, dt)
 
 
-def loglike_exp(V, H, params):
-    """Evaluate the log likelihood of spiking (V - H - omega)
+def log_intensity(V, H, params):
+    """Evaluate the log conditional intensity, (V - H - omega)
 
     V: 2D array with voltage and θV in the first two columns
     H: 2D array with θ1 and θ2 in the first two columns
