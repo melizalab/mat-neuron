@@ -73,7 +73,7 @@ predict(state_full_type state,
                         x[1] = P[0];
                         x[2] = P[1];
                         iref = i + i_refrac;
-                        spikes.append(i * dt);
+                        spikes.append(i);
                 }
                 else {
                         x[1] = x[2] = 0;
@@ -119,7 +119,7 @@ predict_voltage(state_full_type state,
 py::array
 predict_adaptation(state_full_type state,
                    const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
-                   const py::array_t<value_type, py::array::c_style | py::array::forcecast> & spikes,
+                   const py::array_t<int, py::array::c_style | py::array::forcecast> & spikes,
                    time_type dt)
 {
         auto S = spikes.unchecked<1>();

@@ -36,7 +36,8 @@ def predict(state, params, current, dt):
     current: a 1-D array of N current values
     dt: time step of forcing current, in ms
 
-    Returns an Nx5 array of the model state variables and a list of spike times
+    Returns an Nx5 array of the model state variables and a list of spike
+    indices (multiply by dt to get times)
 
     """
     from mat_neuron import _model
@@ -53,7 +54,9 @@ def predict_voltage(state, params, current, dt):
     stimulus, so it's more efficient to predict the voltage and its derivative
     from the current separately.
 
-    See predict() for specification of params and state arguments
+    See predict() for specification of params and state arguments.
+
+    Returns an Nx3 array of the model state variables (V, θV, ddθV)
 
     """
     from mat_neuron import _model
@@ -67,12 +70,13 @@ def predict_adaptation(state, params, spikes, dt, N):
     This function is usually called as a second step when evaluating the
     log-likelihood of a spike train.
 
-    See predict() for specification of params and state arguments
+    See predict() for specification of params and state arguments. Spike times
+    need to be specified as integral indices (i.e., int(t / dt))
 
     """
     from mat_neuron import _model
     idx = (np.asarray(spikes) / dt).astype('i')
-    spk = np.zeros(N)
+    spk = np.zeros(N, dtype='i')
     spk[idx] = 1
     return _model.predict_adaptation(state, params, spk, dt)
 
