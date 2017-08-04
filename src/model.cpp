@@ -63,6 +63,7 @@ predict(state_full_type state,
         const size_t i_refrac = (int)(P[9] / dt);
 
         state_full_type x;
+        x.setZero();
         py::array_t<value_type> Y({N, D_FULL});
         auto Yptr = Y.mutable_unchecked<2>();
         py::list spikes;
@@ -102,7 +103,8 @@ predict_voltage(state_full_type state,
         const size_t N = I.size();
 
         state_volt_type y(state[0], state[3], state[4]);
-        state_volt_type x(0, 0, 0);
+        state_volt_type x;
+        x.setZero();
 
         py::array_t<value_type> Y({N, D_VOLT});
         auto Yptr = Y.mutable_unchecked<2>();
