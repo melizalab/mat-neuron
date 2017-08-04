@@ -69,7 +69,9 @@ def predict_adaptation(state, params, spikes, dt, N=None):
     """Predict the voltage-independent adaptation variables from known spike times.
 
     This function is usually called as a second step when evaluating the
-    log-likelihood of a spike train.
+    log-likelihood of a spike train. In order for estimation to work, this
+    filter has to be *causal*, so the adaptation variables are not affected
+    until the following time bin.
 
     See predict() for specification of params and state arguments.
 

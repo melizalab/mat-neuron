@@ -137,14 +137,20 @@ predict_adaptation(state_full_type state,
         py::array_t<value_type> Y({N, 2});
         auto Yptr = Y.mutable_unchecked<2>();
         for (size_t i = 0; i < N; ++i) {
-                th1 = A1 * th1 + P[0] * S[i];
-                th2 = A2 * th2 + P[1] * S[i];
+                // spikes need to be causal, so we only add the deltas after
+                // storing the result of the filter
+                th1 = A1 * th1;
+                th2 = A2 * th2;
                 Yptr(i, 0) = th1;
                 Yptr(i, 1) = th2;
+                if (S[i]) {
+                        th1 += P[0];
+                        th2 += P[1];
+                }
         }
         return Y;
-
 }
+
 
 PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");

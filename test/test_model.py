@@ -42,17 +42,6 @@ def test_predict_voltage():
     assert_true(all(np.abs(Y[:,4] - V[:,2]) < 1e-6))
 
 
-def test_predict_adaptation():
-    params = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
-    I = np.zeros(2000, dtype='d')
-    I[500:1500] = 0.5
-    Y, S = core.predict(np.asarray(state), params, I, dt)
-    H = core.predict_adaptation(state, params, S, dt, I.size)
-
-    assert_true(all(np.abs(Y[:,1] - H[:,0]) < 1e-6))
-    assert_true(all(np.abs(Y[:,2] - H[:,1]) < 1e-6))
-
-
 def test_predict_adaptation_sparray():
     params = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
     I = np.zeros(2000, dtype='d')
@@ -62,8 +51,11 @@ def test_predict_adaptation_sparray():
     spk[S] = 1
     H = core.predict_adaptation(state, params, spk, dt)
 
-    assert_true(all(np.abs(Y[:,1] - H[:,0]) < 1e-6))
-    assert_true(all(np.abs(Y[:,2] - H[:,1]) < 1e-6))
+    # have to blank out the bins with spikes because predict_adaptation is a
+    # causal filter, and the normal prediction operation is not
+
+    assert_true(all(np.abs(Y[~spk,1] - H[~spk,0]) < 1e-6))
+    assert_true(all(np.abs(Y[~spk,2] - H[~spk,1]) < 1e-6))
 
 
 def test_likelihood():
@@ -77,10 +69,9 @@ def test_likelihood():
     H_true = core.predict_adaptation(state, params_true, S_obs, dt, I.size)
     lci_true = core.log_intensity(V_true, H_true, params_true)
 
-    params_guess = np.asarray([10, 2, -1, 5, 10, 10, 10, 200, 5, 2])
+    params_guess = np.asarray([-50, -5, -5, 0, 10, 10, 10, 200, 5, 2])
     V_guess = core.predict_voltage(state, params_guess, I, dt)
     H_guess = core.predict_adaptation(state, params_guess, S_obs, dt, I.size)
-
     lci_guess = core.log_intensity(V_guess, H_guess, params_guess)
 
     ll_true = np.sum(lci_true[S_obs]) - np.sum(np.exp(lci_true))
