@@ -24,7 +24,7 @@ def impulse_matrix(params, dt, reduced=False):
     return linalg.expm(A * dt)
 
 
-def predict(state, params, current, dt, Aexp=None):
+def predict(state, params, current, dt, stochastic=False, Aexp=None):
     """Integrate model to predict spiking response
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
@@ -43,7 +43,14 @@ def predict(state, params, current, dt, Aexp=None):
     from mat_neuron import _model
     if Aexp is None:
         Aexp = impulse_matrix(params, dt)
-    return _model.predict(np.asarray(state), Aexp, np.asarray(params), current, dt)
+    if not stochastic:
+        fun = _model.predict
+        return _model.predict(np.asarray(state), Aexp, np.asarray(params), current, dt)
+    elif stochastic == "softmax"
+    else:
+        #_model.poisson.seed(stochastic)
+        return _model.predict_stochastic(np.asarray(state), Aexp,
+                                         np.asarray(params), current, dt)
 
 
 def predict_voltage(state, params, current, dt, Aexp=None):

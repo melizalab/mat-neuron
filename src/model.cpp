@@ -1,5 +1,6 @@
 // -*- coding: utf-8 -*-
 // -*- mode: c++ -*-
+#include <iostream>
 #include <cmath>
 #include <random>
 #include <pybind11/pybind11.h>
@@ -21,6 +22,15 @@ typedef Eigen::Matrix<double, D_VOLT, 1> state_volt_type;
 
 namespace spikers {
 
+// all the spikers share a common RNG
+static std::default_random_engine _generator;
+
+void
+seed(unsigned int value) {
+        _generator.seed(value);
+}
+
+
 struct deterministic {
         bool operator()(value_type V, value_type H, time_type dt) {
                 return V > H;
@@ -33,7 +43,9 @@ struct poisson {
                 value_type prob = exp(V - H) * dt;
                 return _udist(_generator) < prob;
         }
-        std::default_random_engine _generator;
+        value_type rng() {
+                return _udist(_generator);
+        }
         std::uniform_real_distribution<double> _udist;
 };
 
@@ -151,21 +163,35 @@ predict_adaptation(state_full_type state,
         return Y;
 }
 
-
 PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
-
+        // py::class_<spikers::poisson>(m, "PoissonSpiker")
+        //         .def(py::init<>())
+        //         .def("seed", &spikers::poisson::seed)
+        //         .def("rng", &spikers::poisson::rng);
+        m.def("random_seed", &spikers::seed);
         m.def("predict", &predict<spikers::deterministic>);
               // [](state_full_type state,
               //    const propmat_full_type Aexp,
               //    const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
               //    const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
-              //    time_type dt,) {
+              //    time_type dt) {
               //         spikers::deterministic s;
-              //         return predict(state, Aexp, params, current,
-        // m.def("predict_stochastic", &predict<spikers::poisson>);
+              //         return predict(state, Aexp, params, current, dt, s);
+              // });
+        m.def("predict_poisson", &predict<spikers::poisson>);
+              // [](state_full_type state,
+              //    const propmat_full_type Aexp,
+              //    const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
+              //    const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
+              //    time_type dt) {
+
+              //         std::cout << poisson_spiker.rng() << std::endl;
+              //         return predict(state, Aexp, params, current, dt, poisson_spiker);
+              // });
         m.def("predict_voltage", &predict_voltage);
         m.def("predict_adaptation", &predict_adaptation);
+
 
 #ifdef VERSION_INFO
     m.attr("__version__") = py::str(VERSION_INFO);

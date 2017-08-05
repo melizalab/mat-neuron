@@ -1,13 +1,24 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 
-from nose.tools import assert_equal, assert_true
+from nose.tools import assert_equal, assert_true, assert_almost_equal
 import numpy as np
 
 from mat_neuron import core
 
 dt = 1.0
 state = [0, 0, 0, 0, 0]
+
+
+def test_impulse_matrix():
+    params = [10, 2, 0, 5, 10, 10, 11, 200, 5, 2]
+    Aexp = core.impulse_matrix(params, dt)
+    assert_equal(Aexp.shape, (5, 5))
+    assert_almost_equal(Aexp[1, 1], np.exp(- dt / params[4]))
+    assert_almost_equal(Aexp[2, 2], np.exp(- dt / params[5]))
+    assert_almost_equal(Aexp[3, 3], np.exp(- dt / params[6]))
+    assert_almost_equal(Aexp[4, 4], np.exp(- dt / params[8]))
+    assert_almost_equal(Aexp[5, 5], np.exp(- dt / params[8]))
 
 
 def test_step_response():
@@ -25,9 +36,21 @@ def test_phasic_response():
     I = np.zeros(2000, dtype='d')
     I[500:1500] = 0.45
     Y, S = core.predict(state, params, I, dt)
-
     assert_equal(len(S), 1)
     assert_true(S[0] == 515)
+
+
+def test_poisson_spiker():
+    from mat_neuron import _model
+    params = [10, 2, 0, 5, 10, 10, 10, 200, 5, 2]
+    I = np.zeros(2000, dtype='d')
+    I[500:1500] = 0.5
+    Aexp = core.impulse_matrix(params, dt)
+    _model.random_seed(1)
+    Y, S1 = _model.predict_poisson(state, Aexp, params, I, dt)
+    _model.random_seed(1)
+    Y, S2 = _model.predict_poisson(state, Aexp, params, I, dt)
+    assert_almost_equal(S1, S2)
 
 
 def test_predict_voltage():
