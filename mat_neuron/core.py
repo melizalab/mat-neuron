@@ -3,9 +3,10 @@
 """
 This module provides functions for integrating the MAT model
 """
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 import numpy as np
 
+from mat_neuron._model import random_seed
 
 def impulse_matrix(params, dt, reduced=False):
     """Calculate the matrix exponential for integration of MAT model"""
@@ -45,12 +46,11 @@ def predict(state, params, current, dt, stochastic=False, Aexp=None):
         Aexp = impulse_matrix(params, dt)
     if not stochastic:
         fun = _model.predict
-        return _model.predict(np.asarray(state), Aexp, np.asarray(params), current, dt)
-    elif stochastic == "softmax"
+    elif stochastic == "softmax":
+        fun = _model.predict_softmax
     else:
-        #_model.poisson.seed(stochastic)
-        return _model.predict_stochastic(np.asarray(state), Aexp,
-                                         np.asarray(params), current, dt)
+        fun = _model.predict_poisson
+    return fun(state, Aexp, params, current, dt)
 
 
 def predict_voltage(state, params, current, dt, Aexp=None):
