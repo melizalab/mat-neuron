@@ -15,7 +15,7 @@ def test_impulse_matrix():
     Aexp = core.impulse_matrix(params, dt)
     assert_equal(Aexp.shape, (5, 5))
     Adiag = np.diag(Aexp)
-    assert_almost_equal(Adiag[0], np.exp(- dt / params[4]))
+    assert_almost_equal(Adiag[0], np.exp(- dt / params[5]))
     assert_almost_equal(Adiag[1], np.exp(- dt / params[6]))
     assert_almost_equal(Adiag[2], np.exp(- dt / params[7]))
     assert_almost_equal(Adiag[3], np.exp(- dt / params[8]))

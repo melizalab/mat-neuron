@@ -97,7 +97,7 @@ predict(state_full_type state,
                 else {
                         x[1] = x[2] = 0;
                 }
-                x[0] = P[5] / P[4] * I[i];
+                x[0] = P[4] / P[5] * I[i];
                 x[4] = x[0] * P[2];
                 state = Aexp * state + x;
                 for (size_t j = 0; j < D_FULL; ++j)
@@ -127,7 +127,7 @@ predict_voltage(state_full_type state,
         py::array_t<value_type> Y({N, D_VOLT});
         auto Yptr = Y.mutable_unchecked<2>();
         for (size_t i = 0; i < N; ++i) {
-                x[0] = P[5] / P[4] * I[i];
+                x[0] = P[4] / P[5] * I[i];
                 x[2] = x[0] * P[2];
                 y = Aexp * y + x;
                 for (size_t j = 0; j < D_VOLT; ++j)
@@ -171,7 +171,8 @@ predict_adaptation(state_full_type state,
 
 PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
-        m.def("random_seed", &spikers::seed);
+        m.def("random_seed", &spikers::seed,
+              "seed the random number generator for stochastic spiking");
         m.def("predict", &predict<spikers::deterministic>);
         m.def("predict_poisson", &predict<spikers::poisson>);
         m.def("predict_softmax", &predict<spikers::softmax>);

@@ -6,12 +6,14 @@ This module provides functions for integrating the MAT model
 from __future__ import division, print_function, absolute_import
 import numpy as np
 
+# import random_seed function so user can set seed
 from mat_neuron._model import random_seed
+
 
 def impulse_matrix(params, dt, reduced=False):
     """Calculate the matrix exponential for integration of MAT model"""
     from scipy import linalg
-    a1, a2, b, w, tm, R, t1, t2, tv, tref = params
+    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
     if not reduced:
         A = - np.matrix([[1 / tm, 0, 0, 0, 0],
                          [0, 1 / t1, 0, 0, 0],
