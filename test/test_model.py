@@ -5,7 +5,6 @@ from nose.tools import assert_equal, assert_true, assert_almost_equal
 import numpy as np
 
 from mat_neuron import core
-
 dt = 1.0
 state = [0, 0, 0, 0, 0]
 
@@ -24,11 +23,12 @@ def test_impulse_matrix():
 
 def test_step_response():
     params = [10, 2, 0, 5, 10, 10, 10, 200, 5, 2]
-    I = np.zeros(2000, dtype='d')
-    I[500:1500] = 0.5
+    I = np.zeros(1000, dtype='d')
+    I[200:] = 0.5
     Y, S = core.predict(state, params, I, dt)
 
-    T = np.asarray([531, 945, 1383])
+    assert_almost_equal(Y[-1,0], I[-1] * params[5], msg="incorrect steady-state voltage")
+    T = np.asarray([231, 645])
     assert_true(all(T == S))
 
 
