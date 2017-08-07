@@ -103,9 +103,9 @@ def predict_adaptation(state, params, spikes, dt, N=None):
 def log_intensity(V, H, params):
     """Evaluate the log conditional intensity, (V - H - omega)
 
-    V: 2D array with voltage and θV in the first two columns
+    V: 2D array with voltage, current and θV in the first three columns
     H: 2D array with θ1 and θ2 in the first two columns
     params: list of parameters (see predict() for specification)
 
     """
-    return V[:, 0] - H[:, 0] - H[:, 1] - V[:, 1] - params[3]
+    return V[:, 0] - H[:, 0] - H[:, 1] - V[:, 2] - params[3]
