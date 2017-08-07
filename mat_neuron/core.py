@@ -15,15 +15,17 @@ def impulse_matrix(params, dt, reduced=False):
     from scipy import linalg
     a1, a2, b, w, R, tm, t1, t2, tv, tref = params
     if not reduced:
-        A = - np.matrix([[1 / tm, 0, 0, 0, 0],
-                         [0, 1 / t1, 0, 0, 0],
-                         [0, 0, 1 / t2, 0, 0],
-                         [0, 0, 0, 1 / tv, -1],
-                         [b / tm, 0, 0, 0, 1 / tv]])
+        A = - np.matrix([[1 / tm, -1, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0],
+                         [0, 0, 1 / t1, 0, 0, 0],
+                         [0, 0, 0, 1 / t2, 0, 0],
+                         [0, 0, 0, 0, 1 / tv, -1],
+                         [b / tm, -b, 0, 0, 0, 1 / tv]])
     else:
-        A = - np.matrix([[1 / tm, 0, 0],
-                         [0, 1 / tv, -1],
-                         [b / tm, 0, 1 / tv]])
+        A = - np.matrix([[1 / tm, -1, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 1 / tv, -1],
+                         [b / tm, -b, 0, 1 / tv]])
     return linalg.expm(A * dt)
 
 

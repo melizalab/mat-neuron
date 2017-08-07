@@ -47,24 +47,21 @@ def predict(state, params, current, dt):
     Aexp = impulse_matrix(params, dt)
     N = current.size
     Y = np.zeros((N, D))
-    x = np.zeros(D)
     y = np.asarray(state)
     spikes = []
-    i_refractory = 0
+    iref = 0
     last_I = 0
     for i in range(N):
-        h = y[2] + y[3] + y[4] + w
-        if y[0] > h and i_refractory <= 0:
-            x[2] = a1
-            x[3] = a2
-            i_refractory = int(tref * dt)
-            spikes.append(i * dt)
-        else:
-            x[2] = x[3] = 0
-            i_refractory -= 1
-        x[1] = R / tm * (current[i] - last_I)
+        y = np.dot(Aexp, y)
+        y[1] += R / tm * (current[i] - last_I)
         last_I = current[i]
-        y = np.dot(Aexp, y) + x
+        # check for spike
+        h = y[2] + y[3] + y[4] + w
+        if i > iref and y[0] > h:
+            y[2] += a1
+            y[3] += a2
+            iref = i + int(tref * dt)
+            spikes.append(i * dt)
         Y[i] = y
     return Y, spikes
 

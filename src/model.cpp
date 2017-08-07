@@ -11,8 +11,8 @@
 namespace py = pybind11;
 using namespace pybind11::literals;
 
-static const size_t D_FULL = 5;
-static const size_t D_VOLT = 3;
+static const size_t D_FULL = 6;
+static const size_t D_VOLT = 4;
 typedef double value_type;
 typedef double time_type;
 typedef Eigen::Matrix<double, D_FULL, D_FULL> propmat_full_type;
@@ -80,26 +80,22 @@ predict(state_full_type state,
         const size_t N = I.size();
         const size_t i_refrac = (int)(P[9] / dt);
 
-        state_full_type x;
-        x.setZero();
+        value_type I_last = 0;
         py::array_t<value_type> Y({N, D_FULL});
         auto Yptr = Y.mutable_unchecked<2>();
         py::list spikes;
         size_t iref = 0;
         for (size_t i = 0; i < N; ++i) {
-                double h = state[1] + state[2] + state[3] + P[3];
+                state = Aexp * state;
+                state[1] += P[4] / P[5] * (I[i] - I_last);
+                I_last = I[i];
+                double h = state[2] + state[3] + state[4] + P[3];
                 if (i > iref && spiker(state[0], h, dt)) {
-                        x[1] = P[0];
-                        x[2] = P[1];
+                        state[2] += P[0];
+                        state[3] += P[1];
                         iref = i + i_refrac;
                         spikes.append(i);
                 }
-                else {
-                        x[1] = x[2] = 0;
-                }
-                x[0] = P[4] / P[5] * I[i];
-                x[4] = x[0] * P[2];
-                state = Aexp * state + x;
                 for (size_t j = 0; j < D_FULL; ++j)
                         Yptr(i, j) = state.coeff(j);
         }
@@ -120,16 +116,14 @@ predict_voltage(state_full_type state,
                 throw std::domain_error("error: param array size < 10");
         const size_t N = I.size();
 
-        state_volt_type y(state[0], state[3], state[4]);
-        state_volt_type x;
-        x.setZero();
-
+        state_volt_type y(state[0], state[1], state[4], state[5]);
+        value_type I_last = 0;
         py::array_t<value_type> Y({N, D_VOLT});
         auto Yptr = Y.mutable_unchecked<2>();
         for (size_t i = 0; i < N; ++i) {
-                x[0] = P[4] / P[5] * I[i];
-                x[2] = x[0] * P[2];
-                y = Aexp * y + x;
+                y = Aexp * y;
+                y[1] += P[4] / P[5] * (I[i] - I_last);
+                I_last = I[i];
                 for (size_t j = 0; j < D_VOLT; ++j)
                         Yptr(i, j) = y.coeff(j);
         }

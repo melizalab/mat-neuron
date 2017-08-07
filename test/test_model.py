@@ -10,15 +10,16 @@ state = [0, 0, 0, 0, 0, 0]
 
 
 def test_impulse_matrix():
-    params = [10, 2, 0, 5, 10, 10, 11, 200, 5, 2]
+    params = [10, 2, 0.1, 5, 10, 10, 11, 200, 5, 2]
     Aexp = core.impulse_matrix(params, dt)
-    assert_equal(Aexp.shape, (5, 5))
+    assert_equal(Aexp.shape, (6, 6))
     Adiag = np.diag(Aexp)
     assert_almost_equal(Adiag[0], np.exp(- dt / params[5]))
-    assert_almost_equal(Adiag[1], np.exp(- dt / params[6]))
-    assert_almost_equal(Adiag[2], np.exp(- dt / params[7]))
-    assert_almost_equal(Adiag[3], np.exp(- dt / params[8]))
+    assert_almost_equal(Adiag[1], 1.0)
+    assert_almost_equal(Adiag[2], np.exp(- dt / params[6]))
+    assert_almost_equal(Adiag[3], np.exp(- dt / params[7]))
     assert_almost_equal(Adiag[4], np.exp(- dt / params[8]))
+    assert_almost_equal(Adiag[5], np.exp(- dt / params[8]))
 
 
 def test_step_response():
@@ -27,8 +28,9 @@ def test_step_response():
     I[200:] = 0.55
     Y, S = core.predict(state, params, I, dt)
 
-    assert_almost_equal(Y[-1,0], I[-1] * params[5], msg="incorrect steady-state voltage")
-    T = np.asarray([231, 510, 833])
+    assert_almost_equal(Y[-1, 1], I[-1], msg="incorrect current integration")
+    assert_almost_equal(Y[-1, 0], I[-1] * params[5], msg="incorrect steady-state voltage")
+    T = np.asarray([224, 502, 824])
     assert_true(all(T == S))
 
 
@@ -37,9 +39,9 @@ def test_phasic_response():
     I = np.zeros(2000, dtype='d')
     I[200:] = 0.5
     Y, S = core.predict(state, params, I, dt)
-    assert_almost_equal(Y[-1,0], I[-1] * params[5], msg="incorrect steady-state voltage")
+    assert_almost_equal(Y[-1, 0], I[-1] * params[5], msg="incorrect steady-state voltage")
     assert_equal(len(S), 1)
-    assert_true(S[0] == 213)
+    assert_true(S[0] == 212)
 
 
 def test_poisson_spiker():
@@ -65,15 +67,13 @@ def test_softmax_spiker():
 
 
 def test_predict_voltage():
-    params = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
+    params = np.asarray([10, 2, 0.1, 5, 10, 10, 10, 200, 5, 2])
     I = np.zeros(2000, dtype='d')
     I[500:1500] = 0.5
     Y, S = core.predict(state, params, I, dt)
     V = core.predict_voltage(state, params, I, dt)
 
-    assert_true(all(np.abs(Y[:,0] - V[:,0]) < 1e-6))
-    assert_true(all(np.abs(Y[:,3] - V[:,1]) < 1e-6))
-    assert_true(all(np.abs(Y[:,4] - V[:,2]) < 1e-6))
+    assert_true(np.all(np.abs(Y[:,(0,1,4,5)] - V) < 1e-6))
 
 
 def test_predict_adaptation_sparray():
@@ -88,8 +88,8 @@ def test_predict_adaptation_sparray():
     # have to blank out the bins with spikes because predict_adaptation is a
     # causal filter, and the normal prediction operation is not
 
-    assert_true(all(np.abs(Y[~spk,1] - H[~spk,0]) < 1e-6))
-    assert_true(all(np.abs(Y[~spk,2] - H[~spk,1]) < 1e-6))
+    assert_true(all(np.abs(Y[~spk,2] - H[~spk,0]) < 1e-6))
+    assert_true(all(np.abs(Y[~spk,3] - H[~spk,1]) < 1e-6))
 
 
 def test_likelihood():
