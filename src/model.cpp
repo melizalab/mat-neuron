@@ -103,6 +103,39 @@ predict(state_full_type state,
 
 }
 
+
+py::array
+log_intensity(state_full_type state,
+              Eigen::Ref<const propmat_full_type> Aexp,
+              const py::array_t<value_type, py::array::c_style | py::array::forcecast> & params,
+              const py::array_t<value_type, py::array::c_style | py::array::forcecast> & current,
+              const py::array_t<int, py::array::c_style | py::array::forcecast> & spikes,
+              time_type dt)
+{
+        auto I = current.unchecked<1>();
+        auto S = spikes.unchecked<1>();
+        auto P = params.unchecked<1>();
+        if (P.size() < 10)
+                throw std::domain_error("error: param array size < 10");
+        const size_t N = I.size();
+
+        value_type I_last = 0;
+        py::array_t<value_type> Y(N);
+        auto Yptr = Y.mutable_unchecked<1>();
+        for (size_t i = 0; i < N; ++i) {
+                state = Aexp * state;
+                state[1] += P[4] / P[5] * (I[i] - I_last);
+                I_last = I[i];
+                Yptr(i) = state[0] - state[2] - state[3] - state[4] - P[3];
+                if (S[i]) {
+                        state[2] += P[0];
+                        state[3] += P[1];
+                }
+        }
+        return Y;
+}
+
+
 py::array
 predict_voltage(state_full_type state,
                 Eigen::Ref<const propmat_volt_type> Aexp,
@@ -172,6 +205,7 @@ PYBIND11_PLUGIN(_model) {
         m.def("predict_softmax", &predict<spikers::softmax>);
         m.def("predict_voltage", &predict_voltage);
         m.def("predict_adaptation", &predict_adaptation);
+        m.def("log_intensity", &log_intensity);
 
 
 #ifdef VERSION_INFO

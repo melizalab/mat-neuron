@@ -94,21 +94,23 @@ def test_predict_adaptation_sparray():
 
 def test_likelihood():
     I = np.zeros(2000, dtype='d')
-    I[500:1500] = 0.5
+    I[500:1500] = 0.55
 
     params_true = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
     Y_true, S_obs = core.predict(state, params_true, I, dt)
+    spk_v = core.spike_array(S_obs, I.size)
 
-    V_true = core.predict_voltage(state, params_true, I, dt)
-    H_true = core.predict_adaptation(state, params_true, S_obs, dt, I.size)
-    lci_true = core.log_intensity(V_true, H_true, params_true)
+    V = core.predict_voltage(state, params_true, I, dt)
+    H = core.predict_adaptation(state, params_true, spk_v, dt)
+    lci = V[:, 0] - H[:, 0] - H[:, 1] - V[:, 2] - params_true[3]
+    lci_fast = core.log_intensity(state, params_true, I, spk_v, dt)
+
+    assert_true(np.all(np.abs(lci - lci_fast) < 1e-6))
 
     params_guess = np.asarray([-50, -5, -5, 0, 10, 10, 10, 200, 5, 2])
-    V_guess = core.predict_voltage(state, params_guess, I, dt)
-    H_guess = core.predict_adaptation(state, params_guess, S_obs, dt, I.size)
-    lci_guess = core.log_intensity(V_guess, H_guess, params_guess)
+    lci_guess = core.log_intensity(state, params_guess, I, spk_v, dt)
 
-    ll_true = np.sum(lci_true[S_obs]) - np.sum(np.exp(lci_true))
+    ll_true = np.sum(lci[S_obs]) - np.sum(np.exp(lci))
     ll_guess = np.sum(lci_guess[S_obs]) - np.sum(np.exp(lci_guess))
 
     assert_true(ll_true > ll_guess)

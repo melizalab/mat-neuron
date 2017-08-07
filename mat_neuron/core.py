@@ -10,6 +10,13 @@ import numpy as np
 from mat_neuron._model import random_seed
 
 
+def spike_array(spike_t, N):
+    """Turn a list of spike times into a densely sampled array of ones and zeros"""
+    spk = np.zeros(N, dtype='i')
+    spk[spike_t] = 1
+    return spk
+
+
 def impulse_matrix(params, dt, reduced=False):
     """Calculate the matrix exponential for integration of MAT model"""
     from scipy import linalg
@@ -76,7 +83,7 @@ def predict_voltage(state, params, current, dt, Aexp=None):
     return _model.predict_voltage(state, Aexp, params, current, dt)
 
 
-def predict_adaptation(state, params, spikes, dt, N=None):
+def predict_adaptation(state, params, spikes, dt):
     """Predict the voltage-independent adaptation variables from known spike times.
 
     This function is usually called as a second step when evaluating the
@@ -91,16 +98,10 @@ def predict_adaptation(state, params, spikes, dt, N=None):
 
     """
     from mat_neuron import _model
-    if N is None:
-        spk = spikes
-    else:
-        idx = np.asarray(spikes, dtype='i')
-        spk = np.zeros(N, dtype='i')
-        spk[idx] = 1
-    return _model.predict_adaptation(state, params, spk, dt)
+    return _model.predict_adaptation(state, params, spikes, dt)
 
 
-def log_intensity(V, H, params):
+def log_intensity(state, params, current, spikes, dt, Aexp=None):
     """Evaluate the log conditional intensity, (V - H - omega)
 
     V: 2D array with voltage, current and θV in the first three columns
@@ -108,4 +109,7 @@ def log_intensity(V, H, params):
     params: list of parameters (see predict() for specification)
 
     """
-    return V[:, 0] - H[:, 0] - H[:, 1] - V[:, 2] - params[3]
+    from mat_neuron import _model
+    if Aexp is None:
+        Aexp = impulse_matrix(params, dt)
+    return _model.log_intensity(state, Aexp, params, current, spikes, dt)
