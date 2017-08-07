@@ -6,6 +6,24 @@ import numpy as np
 
 from mat_neuron.core import impulse_matrix
 
+def impulse_matrix(params, dt, reduced=False):
+    """Calculate the matrix exponential for integration of MAT model"""
+    from scipy import linalg
+    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
+    if not reduced:
+        A = - np.matrix([[1 / tm, -1, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0],
+                         [0, 0, 1 / t1, 0, 0, 0],
+                         [0, 0, 0, 1 / t2, 0, 0],
+                         [0, 0, 0, 0, 1 / tv, -1],
+                         [b / tm, -b, 0, 0, 0, 1 / tv]])
+    else:
+        A = - np.matrix([[1 / tm, -1, 0, 0],
+                         [0,       0, 0, 0],
+                         [0, 0, 1 / tv, -1],
+                         [b / tm, -b, 0, 1 / tv]])
+    return linalg.expm(A * dt)
+
 
 def predict(state, params, current, dt):
     """Integrate model to predict spiking response
@@ -22,9 +40,9 @@ def predict(state, params, current, dt):
     Returns an Nx5 array of the model state variables and a list of spike times
 
     """
-    D = 5
-    a1, a2, b, w, tm, R, t1, t2, tv, tref = params
-    v, h1, h2, hv, dhv = state
+    D = 6
+    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
+    v, phi, h1, h2, hv, dhv = state
 
     Aexp = impulse_matrix(params, dt)
     N = current.size
@@ -33,18 +51,19 @@ def predict(state, params, current, dt):
     y = np.asarray(state)
     spikes = []
     i_refractory = 0
+    last_I = 0
     for i in range(N):
-        h = y[1] + y[2] + y[3] + w
+        h = y[2] + y[3] + y[4] + w
         if y[0] > h and i_refractory <= 0:
-            x[1] = a1
-            x[2] = a2
-            i_refractory = int(t_refractory * dt)
+            x[2] = a1
+            x[3] = a2
+            i_refractory = int(tref * dt)
             spikes.append(i * dt)
         else:
-            x[1] = x[2] = 0
+            x[2] = x[3] = 0
             i_refractory -= 1
-        x[0] = R / tm * current[i]
-        x[4] = R / tm * current[i] * b
+        x[1] = R / tm * (current[i] - last_I)
+        last_I = current[i]
         y = np.dot(Aexp, y) + x
         Y[i] = y
     return Y, spikes
@@ -61,17 +80,18 @@ def predict_voltage(state, params, current, dt):
     See predict() for specification of params and state arguments
 
     """
-    D = 3
-    a1, a2, b, w, tm, R, t1, t2, tv, tref = params
+    D = 4
+    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
     Aexp = impulse_matrix(params, dt, reduced=True)
-    v, _, _, hv, dhv = state
-    y = np.asarray([v, hv, dhv], dtype='d')
+    v, phi, _, _, hv, dhv = state
+    y = np.asarray([v, phi, hv, dhv], dtype='d')
     N = current.size
     Y = np.zeros((N, D), dtype='d')
     x = np.zeros(D, dtype='d')
+    last_I = 0
     for i in range(N):
-        x[0] = R / tm * current[i]
-        x[2] = R / tm * current[i] * b
+        x[1] = R / tm * (current[i] - last_I)
+        last_I = current[i]
         y = np.dot(Aexp, y) + x
         Y[i] = y
     return Y

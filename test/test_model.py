@@ -6,7 +6,7 @@ import numpy as np
 
 from mat_neuron import core
 dt = 1.0
-state = [0, 0, 0, 0, 0]
+state = [0, 0, 0, 0, 0, 0]
 
 
 def test_impulse_matrix():
@@ -24,21 +24,22 @@ def test_impulse_matrix():
 def test_step_response():
     params = [10, 2, 0, 5, 10, 10, 10, 200, 5, 2]
     I = np.zeros(1000, dtype='d')
-    I[200:] = 0.5
+    I[200:] = 0.55
     Y, S = core.predict(state, params, I, dt)
 
     assert_almost_equal(Y[-1,0], I[-1] * params[5], msg="incorrect steady-state voltage")
-    T = np.asarray([231, 645])
+    T = np.asarray([231, 510, 833])
     assert_true(all(T == S))
 
 
 def test_phasic_response():
     params = np.asarray([10, 2, -0.3, 5, 10, 10, 10, 200, 5, 2])
     I = np.zeros(2000, dtype='d')
-    I[500:1500] = 0.45
+    I[200:] = 0.5
     Y, S = core.predict(state, params, I, dt)
+    assert_almost_equal(Y[-1,0], I[-1] * params[5], msg="incorrect steady-state voltage")
     assert_equal(len(S), 1)
-    assert_true(S[0] == 515)
+    assert_true(S[0] == 213)
 
 
 def test_poisson_spiker():
