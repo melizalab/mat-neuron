@@ -129,4 +129,4 @@ def loglike_exp(V, H, params):
     params: list of parameters (see predict() for specification)
 
     """
-    return V[:, 0] - H[:, 0] - H[:, 1] - V[:, 1] - params[3]
+    return V[:, 0] - H[:, 0] - H[:, 1] - V[:, 2] - params[3]
