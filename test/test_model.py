@@ -35,6 +35,19 @@ def test_step_response():
     assert_true(np.all(T == spk))
 
 
+def test_stimulus_upsample():
+    params = [10, 2, 0, 5, 10, 10, 10, 200, 5, 2]
+    I = np.zeros(1000, dtype='d')
+    I[200:] = 0.55
+    Y2, S2 = core.predict(state, params, I, dt, upsample=2)
+    spk = S2.nonzero()[0]
+
+    assert_equal(S2.size, I.size * 2)
+    assert_equal(Y2[:,1].nonzero()[0][0], 400)
+    T = np.asarray([224, 502, 824])
+    assert_true(np.all(T + 200 == spk[:3]))
+
+
 def test_phasic_response():
     params = np.asarray([10, 2, -0.3, 5, 10, 10, 10, 200, 5, 2])
     I = np.zeros(2000, dtype='d')
@@ -100,7 +113,7 @@ def test_likelihood():
     Y_true, spk_v = core.predict(state, params_true, I, dt)
     S_obs = spk_v.nonzero()[0]
 
-    Aexp = core.impulse_matrix(params_true, dt)
+    Aexp = core.impulse_matrix(params_true, dt, reduced=True)
     llf = core.lci_poisson(state, Aexp, params_true, I, spk_v, dt)
 
     V = core.predict_voltage(state, params_true, I, dt)

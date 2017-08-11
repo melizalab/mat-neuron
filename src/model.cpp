@@ -73,7 +73,6 @@ struct poisson {
 }
 
 
-
 /*
  * The core of the prediction routine. You'll need to precalculate the
  * propagator/impulse matrix.
@@ -86,14 +85,14 @@ predict(state_full_type state,
         Eigen::Ref<const propmat_full_type> Aexp,
         const py::array_t<value_type> params,
         const py::array_t<value_type> current,
-        time_type dt)
+        time_type dt, size_t upsample)
 {
         Spiker spiker;
         auto I = current.unchecked<1>();
         auto P = params.unchecked<1>();
         if (P.size() < 10)
                 throw std::domain_error("error: param array size < 10");
-        const size_t N = I.size();
+        const size_t N = I.size() * upsample;
         const size_t i_refrac = (int)(P[9] / dt);
 
         value_type I_last = 0;
@@ -104,8 +103,9 @@ predict(state_full_type state,
         size_t iref = 0;
         for (size_t i = 0; i < N; ++i) {
                 state = Aexp * state;
-                state[1] += P[4] / P[5] * (I[i] - I_last);
-                I_last = I[i];
+                value_type It = I[i / upsample];
+                state[1] += P[4] / P[5] * (It - I_last);
+                I_last = It;
                 double h = state[2] + state[3] + state[4] + P[3];
                 if (i > iref && spiker(state[0], h, dt)) {
                         state[2] += P[0];
@@ -247,9 +247,12 @@ PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
         m.def("random_seed", &spikers::seed,
               "seed the random number generator for stochastic spiking");
-        m.def("predict", &predict<spikers::deterministic>);
-        m.def("predict_poisson", &predict<spikers::poisson>);
-        m.def("predict_softmax", &predict<spikers::softmax>);
+        m.def("predict", &predict<spikers::deterministic>, "predict model response",
+              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+        m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",
+              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+        m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
+              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);;
         m.def("predict_voltage", &predict_voltage);
         m.def("predict_adaptation", &predict_adaptation);
         m.def("log_intensity", &log_intensity);
