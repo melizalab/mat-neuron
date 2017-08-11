@@ -62,9 +62,9 @@ namespace likelihoods {
 
 struct poisson {
         poisson(value_type dt) : value(0), _dt(dt) {}
-        void operator()(state_full_type state, value_type omega, spike_type s) {
-                value_type mu = state[0] - state[2] - state[3] - state[4] - omega;
+        bool operator()(value_type mu, spike_type s) {
                 value += s * mu - _dt * std::exp(mu);
+                return std::isfinite(value);
         }
         value_type value;
         const value_type _dt;
@@ -101,7 +101,7 @@ predict(state_full_type state,
         py::array_t<spike_type> S(N);
         auto Yptr = Y.mutable_unchecked<2>();
         auto Sptr = S.mutable_unchecked<1>();
-         size_t iref = 0;
+        size_t iref = 0;
         for (size_t i = 0; i < N; ++i) {
                 state = Aexp * state;
                 state[1] += P[4] / P[5] * (I[i] - I_last);
@@ -127,7 +127,7 @@ predict(state_full_type state,
 template <typename Observer>
 void
 log_intensity_fast(state_full_type state,
-                   Eigen::Ref<const propmat_full_type> Aexp,
+                   Eigen::Ref<const propmat_volt_type> Aexp,
                    py::array_t<value_type> params,
                    py::array_t<value_type> current,
                    py::array_t<int> spikes,
@@ -139,17 +139,25 @@ log_intensity_fast(state_full_type state,
         if (P.size() < 10)
                 throw std::domain_error("error: param array size < 10");
         const size_t Ns = I.size();
-        //const size_t Nt = S.shape(1);
+        const value_type A1 = exp(-dt / P[6]);
+        const value_type A2 = exp(-dt / P[7]);
 
+        value_type th1(state[1]);
+        value_type th2(state[2]);
+        state_volt_type y(state[0], state[1], state[4], state[5]);
         value_type I_last = 0;
         for (size_t i = 0; i < Ns; ++i) {
-                state = Aexp * state;
-                state[1] += P[4] / P[5] * (I[i] - I_last);
+                y = Aexp * y;
+                y[1] += P[4] / P[5] * (I[i] - I_last);
+                th1 = A1 * th1;
+                th2 = A2 * th2;
                 I_last = I[i];
-                obs(state, P[3], S[i]);
+                value_type mu = y[0] - y[2] - th1 -th2 - P[3];
+                if (!obs(mu, S[i]))
+                        break;
                 if (S[i]) {
-                        state[2] += P[0];
-                        state[3] += P[1];
+                        th1 += P[0];
+                        th2 += P[1];
                 }
         }
 }
@@ -191,7 +199,7 @@ predict_adaptation(state_full_type state,
         if (params.size() < 10)
                 throw std::domain_error("error: param array size < 10");
         auto S = spikes.unchecked<1>();
-        auto P = params.unchecked<1>();
+       auto P = params.unchecked<1>();
         const size_t N = spikes.size();
         const value_type A1 = exp(-dt / P[6]);
         const value_type A2 = exp(-dt / P[7]);
@@ -224,14 +232,6 @@ log_intensity(const py::array_t<value_type> Varr,
         auto H = Harr.unchecked<2>();
         auto P = params.unchecked<1>();
         const size_t N = V.shape(0);
-        // if (P.size() < 10)
-        //         throw std::domain_error("error: param array size < 10");
-        // if (N != H.shape(0))
-        //         throw std::domain_error("error: V and H must have same number of rows");
-        // if (V.shape(1) < 3)
-        //         throw std::domain_error("error: V must have 3 or more columns");
-        // if (H.shape(1) < 2)
-        //         throw std::domain_error("error: H must have 2 or more columns");
 
         py::array_t<value_type> Yarr(N);
         auto Y = Yarr.mutable_unchecked<1>();
@@ -254,7 +254,7 @@ PYBIND11_PLUGIN(_model) {
         m.def("predict_adaptation", &predict_adaptation);
         m.def("log_intensity", &log_intensity);
         m.def("lci_poisson", [](state_full_type state,
-                                Eigen::Ref<const propmat_full_type> Aexp,
+                                Eigen::Ref<const propmat_volt_type> Aexp,
                                 py::array_t<value_type> params,
                                 py::array_t<value_type> current,
                                 py::array_t<int> spikes,
