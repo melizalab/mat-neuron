@@ -7,14 +7,7 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 
 # import random_seed function so user can set seed
-from mat_neuron._model import random_seed
-
-
-def spike_array(spike_t, N):
-    """Turn a list of spike times into a densely sampled array of ones and zeros"""
-    spk = np.zeros(N, dtype='i')
-    spk[spike_t] = 1
-    return spk
+from mat_neuron._model import random_seed, lci_poisson
 
 
 def impulse_matrix(params, dt, reduced=False):
@@ -101,7 +94,7 @@ def predict_adaptation(state, params, spikes, dt):
     return _model.predict_adaptation(state, params, spikes, dt)
 
 
-def log_intensity(state, params, current, spikes, dt, Aexp=None):
+def log_intensity(V, H, params):
     """Evaluate the log conditional intensity, (V - H - omega)
 
     V: 2D array with voltage, current and θV in the first three columns
@@ -110,6 +103,4 @@ def log_intensity(state, params, current, spikes, dt, Aexp=None):
 
     """
     from mat_neuron import _model
-    if Aexp is None:
-        Aexp = impulse_matrix(params, dt)
-    return _model.log_intensity(state, Aexp, params, current, spikes, dt)
+    return _model.log_intensity(V, H, params)
