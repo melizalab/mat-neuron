@@ -121,7 +121,7 @@ def predict_adaptation(params, state, spikes, dt, N):
     return Y
 
 
-def loglike_exp(V, H, params):
+def log_intensity(V, H, params):
     """Evaluate the log likelihood of spiking with an exponential link function.
 
     V: 2D array with voltage and θV in the first two columns
@@ -129,4 +129,4 @@ def loglike_exp(V, H, params):
     params: list of parameters (see predict() for specification)
 
     """
-    return V[:, 0] - H[:, 0] - H[:, 1] - V[:, 2] - params[3]
+    return V[:, 0] - H[:, 0] - H[:, 1] - V[:, 1] - params[3]
