@@ -57,7 +57,7 @@ def predict(state, params, current, dt, upsample=1, stochastic=False, Aexp=None)
     return fun(state, Aexp, params, current, dt, upsample)
 
 
-def predict_voltage(state, params, current, dt, Aexp=None):
+def predict_voltage(state, params, current, dt, upsample=1, Aexp=None):
     """Integrate just the current-dependent variables.
 
     This function is usually called as a first step when evaluating the
@@ -73,7 +73,7 @@ def predict_voltage(state, params, current, dt, Aexp=None):
     from mat_neuron import _model
     if Aexp is None:
         Aexp = impulse_matrix(params, dt, reduced=True)
-    return _model.predict_voltage(state, Aexp, params, current, dt)
+    return _model.predict_voltage(state, Aexp, params, current, dt, upsample)
 
 
 def predict_adaptation(state, params, spikes, dt):

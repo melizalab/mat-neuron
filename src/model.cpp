@@ -102,8 +102,8 @@ predict(state_full_type state,
         auto Sptr = S.mutable_unchecked<1>();
         size_t iref = 0;
         for (size_t i = 0; i < N; ++i) {
-                state = Aexp * state;
                 value_type It = I[i / upsample];
+                state = Aexp * state;
                 state[1] += P[4] / P[5] * (It - I_last);
                 I_last = It;
                 double h = state[2] + state[3] + state[4] + P[3];
@@ -123,22 +123,26 @@ predict(state_full_type state,
 
 }
 
-
+/**
+ * log_intensity_fast computes the log intensity of a spike train conditional on
+ * the model parameters. It uses an observer to accumulate values. This function
+ * is intended to be as fast as possible. The impulse matrix is split out into
+ * the voltage-dependent and spike-history depenedent terms. There is no
+ * checking of array bounds.
+ */
 template <typename Observer>
 void
 log_intensity_fast(state_full_type state,
                    Eigen::Ref<const propmat_volt_type> Aexp,
                    py::array_t<value_type> params,
                    py::array_t<value_type> current,
-                   py::array_t<int> spikes,
-                   time_type dt, Observer&& obs)
+                   py::array_t<spike_type> spikes,
+                   time_type dt, size_t upsample, Observer&& obs)
 {
         auto I = current.unchecked<1>();
         auto S = spikes.unchecked<1>();
         auto P = params.unchecked<1>();
-        if (P.size() < 10)
-                throw std::domain_error("error: param array size < 10");
-        const size_t Ns = I.size();
+        const size_t N = I.size() * upsample;
         const value_type A1 = exp(-dt / P[6]);
         const value_type A2 = exp(-dt / P[7]);
 
@@ -146,12 +150,13 @@ log_intensity_fast(state_full_type state,
         value_type th2(state[2]);
         state_volt_type y(state[0], state[1], state[4], state[5]);
         value_type I_last = 0;
-        for (size_t i = 0; i < Ns; ++i) {
+        for (size_t i = 0; i < N; ++i) {
+                value_type It = I[i / upsample];
                 y = Aexp * y;
-                y[1] += P[4] / P[5] * (I[i] - I_last);
+                y[1] += P[4] / P[5] * (It - I_last);
                 th1 = A1 * th1;
                 th2 = A2 * th2;
-                I_last = I[i];
+                I_last = It;
                 value_type mu = y[0] - y[2] - th1 -th2 - P[3];
                 if (!obs(mu, S[i]))
                         break;
@@ -168,22 +173,21 @@ predict_voltage(state_full_type state,
                 Eigen::Ref<const propmat_volt_type> Aexp,
                 const py::array_t<value_type> params,
                 const py::array_t<value_type> current,
-                time_type dt)
+                time_type dt, size_t upsample)
 {
         auto I = current.unchecked<1>();
         auto P = params.unchecked<1>();
-        if (P.size() < 10)
-                throw std::domain_error("error: param array size < 10");
-        const size_t N = I.size();
+        const size_t N = I.size() * upsample;
 
         state_volt_type y(state[0], state[1], state[4], state[5]);
         value_type I_last = 0;
         py::array_t<value_type> Y({N, D_VOLT});
         auto Yptr = Y.mutable_unchecked<2>();
         for (size_t i = 0; i < N; ++i) {
+                value_type It = I[i / upsample];
                 y = Aexp * y;
-                y[1] += P[4] / P[5] * (I[i] - I_last);
-                I_last = I[i];
+                y[1] += P[4] / P[5] * (It - I_last);
+                I_last = It;
                 for (size_t j = 0; j < D_VOLT; ++j)
                         Yptr(i, j) = y.coeff(j);
         }
@@ -252,8 +256,9 @@ PYBIND11_PLUGIN(_model) {
         m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",
               "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
-              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);;
-        m.def("predict_voltage", &predict_voltage);
+              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+        m.def("predict_voltage", &predict_voltage, "predict voltage and coupled variables",
+              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_adaptation", &predict_adaptation);
         m.def("log_intensity", &log_intensity);
         m.def("lci_poisson", [](state_full_type state,
@@ -261,12 +266,15 @@ PYBIND11_PLUGIN(_model) {
                                 py::array_t<value_type> params,
                                 py::array_t<value_type> current,
                                 py::array_t<int> spikes,
-                                time_type dt) {
+                                time_type dt, size_t upsample) {
                       likelihoods::poisson observer(dt);
                       log_intensity_fast(state, Aexp, params, current, spikes, dt,
-                                         observer);
+                                         upsample, observer);
                       return observer.value;
-              });
+              },
+              "calculate log likelihood of spikes conditional on parameters",
+              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a,
+              "spikes"_a, "dt"_a, "upsample"_a=1);
 
 
 

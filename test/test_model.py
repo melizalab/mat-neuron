@@ -10,6 +10,7 @@ state = [0, 0, 0, 0, 0, 0]
 
 
 def test_impulse_matrix():
+    """Impulse matrix should have the correct dimension and diagonal values"""
     params = [10, 2, 0.1, 5, 10, 10, 11, 200, 5, 2]
     Aexp = core.impulse_matrix(params, dt)
     assert_equal(Aexp.shape, (6, 6))
@@ -20,6 +21,18 @@ def test_impulse_matrix():
     assert_almost_equal(Adiag[3], np.exp(- dt / params[7]))
     assert_almost_equal(Adiag[4], np.exp(- dt / params[8]))
     assert_almost_equal(Adiag[5], np.exp(- dt / params[8]))
+
+
+def test_reduced_impulse_matrix():
+    """Reduced impulse matrix should have the correct dimension and diagonal values"""
+    params = [10, 2, 0.1, 5, 10, 10, 11, 200, 5, 2]
+    Aexp = core.impulse_matrix(params, dt, reduced=True)
+    assert_equal(Aexp.shape, (4, 4))
+    Adiag = np.diag(Aexp)
+    assert_almost_equal(Adiag[0], np.exp(- dt / params[5]))
+    assert_almost_equal(Adiag[1], 1.0)
+    assert_almost_equal(Adiag[2], np.exp(- dt / params[8]))
+    assert_almost_equal(Adiag[3], np.exp(- dt / params[8]))
 
 
 def test_step_response():
@@ -87,7 +100,15 @@ def test_predict_voltage():
     I[500:1500] = 0.5
     Y, S = core.predict(state, params, I, dt)
     V = core.predict_voltage(state, params, I, dt)
+    assert_true(np.all(np.abs(Y[:,(0,1,4,5)] - V) < 1e-6))
 
+
+def test_predict_voltage_upsampled():
+    params = np.asarray([10, 2, 0.1, 5, 10, 10, 10, 200, 5, 2])
+    I = np.zeros(2000, dtype='d')
+    I[500:1500] = 0.5
+    Y, S = core.predict(state, params, I, dt, upsample=3)
+    V = core.predict_voltage(state, params, I, dt, upsample=3)
     assert_true(np.all(np.abs(Y[:,(0,1,4,5)] - V) < 1e-6))
 
 
@@ -120,10 +141,24 @@ def test_likelihood():
     H = core.predict_adaptation(state, params_true, spk_v, dt)
     lci = core.log_intensity(V, H, params_true)
     ll = np.sum(lci[S_obs]) - dt * np.sum(np.exp(lci))
-
     assert_almost_equal(llf, ll)
 
     params_guess = np.asarray([-50, -5, -5, 0, 10, 10, 10, 200, 5, 2])
     llf_g = core.lci_poisson(state, Aexp, params_guess, I, spk_v, dt)
-
     assert_true(llf > llf_g)
+
+
+def test_likelihood_upsample():
+    """The likelihood should be the same with a downsampled current"""
+    I = np.zeros(2000, dtype='d')
+    I[500:1500] = 0.55
+
+    params_true = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
+    Y_true, spk_v = core.predict(state, params_true, I, dt)
+    Aexp = core.impulse_matrix(params_true, dt, reduced=True)
+    llf = core.lci_poisson(state, Aexp, params_true, I, spk_v, dt)
+
+    I_ds = I[::2]
+    llfds = core.lci_poisson(state, Aexp, params_true, I_ds, spk_v, dt, upsample=2)
+
+    assert_almost_equal(llf, llfds)
