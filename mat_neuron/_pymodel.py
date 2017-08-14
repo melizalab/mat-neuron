@@ -6,16 +6,6 @@ import numpy as np
 
 from mat_neuron.core import impulse_matrix
 
-def impulse_matrix_symbolic():
-    import sympy as sp
-    a1, a2, b, w, R, tm, t1, t2, tv, tref, dt = sp.symbols("a1, a2, b, w, R, tm, t1, t2, tv, tref, dt")
-    A = - sp.Matrix([[1 / tm, -1, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0, 0],
-                   [0, 0, 1 / t1, 0, 0, 0],
-                   [0, 0, 0, 1 / t2, 0, 0],
-                   [0, 0, 0, 0, 1 / tv, -1],
-                   [b / tm, -b, 0, 0, 0, 1 / tv]])
-
 def impulse_matrix_direct(params, dt):
     from numpy import exp
     Aexp = np.zeros((6, 6), dtype='d')

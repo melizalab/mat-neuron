@@ -113,7 +113,6 @@ impulse_matrix(const py::array_t<value_type> params, time_type dt)
 template<typename Spiker>
 py::tuple
 predict(state_full_type state,
-        Eigen::Ref<const propmat_full_type> Aexp,
         const py::array_t<value_type> params,
         const py::array_t<value_type> current,
         time_type dt, size_t upsample)
@@ -121,6 +120,7 @@ predict(state_full_type state,
         Spiker spiker;
         auto I = current.unchecked<1>();
         auto P = params.unchecked<1>();
+        const propmat_full_type Aexp = impulse_matrix(params, dt);
         if (P.size() < 10)
                 throw std::domain_error("error: param array size < 10");
         const size_t N = I.size() * upsample;
@@ -285,11 +285,11 @@ PYBIND11_PLUGIN(_model) {
         m.def("impulse_matrix", &impulse_matrix, "generate impulse matrix for exact integration",
               "params"_a, "dt"_a);
         m.def("predict", &predict<spikers::deterministic>, "predict model response",
-              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",
-              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
-              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_voltage", &predict_voltage, "predict voltage and coupled variables",
               "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_adaptation", &predict_adaptation);
