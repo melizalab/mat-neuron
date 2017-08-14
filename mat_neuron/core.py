@@ -7,26 +7,7 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 
 # import random_seed function so user can set seed
-from mat_neuron._model import random_seed, lci_poisson
-
-
-def impulse_matrix(params, dt, reduced=False):
-    """Calculate the matrix exponential for integration of MAT model"""
-    from scipy import linalg
-    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
-    if not reduced:
-        A = - np.matrix([[1 / tm, -1, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0],
-                         [0, 0, 1 / t1, 0, 0, 0],
-                         [0, 0, 0, 1 / t2, 0, 0],
-                         [0, 0, 0, 0, 1 / tv, -1],
-                         [b / tm, -b, 0, 0, 0, 1 / tv]])
-    else:
-        A = - np.matrix([[1 / tm, -1, 0, 0],
-                         [0, 0, 0, 0],
-                         [0, 0, 1 / tv, -1],
-                         [b / tm, -b, 0, 1 / tv]])
-    return linalg.expm(A * dt)
+from mat_neuron._model import random_seed, lci_poisson, impulse_matrix
 
 
 def predict(state, params, current, dt, upsample=1, stochastic=False):
@@ -55,7 +36,7 @@ def predict(state, params, current, dt, upsample=1, stochastic=False):
     return fun(state, params, current, dt, upsample)
 
 
-def predict_voltage(state, params, current, dt, upsample=1, Aexp=None):
+def predict_voltage(state, params, current, dt, upsample=1):
     """Integrate just the current-dependent variables.
 
     This function is usually called as a first step when evaluating the
@@ -69,9 +50,7 @@ def predict_voltage(state, params, current, dt, upsample=1, Aexp=None):
 
     """
     from mat_neuron import _model
-    if Aexp is None:
-        Aexp = impulse_matrix(params, dt, reduced=True)
-    return _model.predict_voltage(state, Aexp, params, current, dt, upsample)
+    return _model.predict_voltage(state, params, current, dt, upsample)
 
 
 def predict_adaptation(state, params, spikes, dt):

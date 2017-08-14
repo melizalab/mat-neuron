@@ -212,13 +212,13 @@ log_intensity_fast(state_full_type state,
 
 py::array
 predict_voltage(state_full_type state,
-                Eigen::Ref<const propmat_volt_type> Aexp,
                 const py::array_t<value_type> params,
                 const py::array_t<value_type> current,
                 time_type dt, size_t upsample)
 {
         auto I = current.unchecked<1>();
         auto P = params.unchecked<1>();
+        const propmat_volt_type Aexp = impulse_matrix(params, dt);
         const size_t N = I.size() * upsample;
 
         state_volt_type y(state[0], state[1], state[4], state[5]);
@@ -302,7 +302,7 @@ PYBIND11_PLUGIN(_model) {
         m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
               "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_voltage", &predict_voltage, "predict voltage and coupled variables",
-              "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_adaptation", &predict_adaptation);
         m.def("log_intensity", &log_intensity);
         m.def("lci_poisson", [](state_full_type state,
