@@ -14,9 +14,9 @@ def test_impulse_matrix():
     from mat_neuron._pymodel import impulse_matrix as imp_ref
     from mat_neuron._model import impulse_matrix
     params = [10, 2, 0.1, 5, 10, 10, 11, 200, 5, 2]
-    Aexp_ref = imp_ref(params, dt)
+    Aexp_ref = imp_ref(params, dt, reduced=True)
     Aexp = impulse_matrix(params, dt)
-    assert_equal(Aexp.shape, (6, 6))
+    assert_equal(Aexp.shape, (4, 4))
     assert_true(np.all(np.abs(Aexp - Aexp_ref) < 1e-6))
 
 
@@ -131,8 +131,7 @@ def test_likelihood():
     Y_true, spk_v = core.predict(state, params_true, I, dt)
     S_obs = spk_v.nonzero()[0]
 
-    Aexp = core.impulse_matrix(params_true, dt, reduced=True)
-    llf = core.lci_poisson(state, Aexp, params_true, I, spk_v, dt)
+    llf = core.lci_poisson(state, params_true, I, spk_v, dt)
 
     V = core.predict_voltage(state, params_true, I, dt)
     H = core.predict_adaptation(state, params_true, spk_v, dt)
@@ -141,7 +140,7 @@ def test_likelihood():
     assert_almost_equal(llf, ll)
 
     params_guess = np.asarray([-50, -5, -5, 0, 10, 10, 10, 200, 5, 2])
-    llf_g = core.lci_poisson(state, Aexp, params_guess, I, spk_v, dt)
+    llf_g = core.lci_poisson(state, params_guess, I, spk_v, dt)
     assert_true(llf > llf_g)
 
 
@@ -152,10 +151,8 @@ def test_likelihood_upsample():
 
     params_true = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
     Y_true, spk_v = core.predict(state, params_true, I, dt)
-    Aexp = core.impulse_matrix(params_true, dt, reduced=True)
-    llf = core.lci_poisson(state, Aexp, params_true, I, spk_v, dt)
+    llf = core.lci_poisson(state, params_true, I, spk_v, dt)
 
     I_ds = I[::2]
-    llfds = core.lci_poisson(state, Aexp, params_true, I_ds, spk_v, dt, upsample=2)
-
+    llfds = core.lci_poisson(state, params_true, I_ds, spk_v, dt, upsample=2)
     assert_almost_equal(llf, llfds)
