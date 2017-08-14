@@ -20,18 +20,6 @@ def test_impulse_matrix():
     assert_true(np.all(np.abs(Aexp - Aexp_ref) < 1e-6))
 
 
-def test_reduced_impulse_matrix():
-    """Reduced impulse matrix should have the correct dimension and diagonal values"""
-    params = [10, 2, 0.1, 5, 10, 10, 11, 200, 5, 2]
-    Aexp = core.impulse_matrix(params, dt, reduced=True)
-    assert_equal(Aexp.shape, (4, 4))
-    Adiag = np.diag(Aexp)
-    assert_almost_equal(Adiag[0], np.exp(- dt / params[5]))
-    assert_almost_equal(Adiag[1], 1.0)
-    assert_almost_equal(Adiag[2], np.exp(- dt / params[8]))
-    assert_almost_equal(Adiag[3], np.exp(- dt / params[8]))
-
-
 def test_step_response():
     params = [10, 2, 0, 5, 10, 10, 10, 200, 5, 2]
     I = np.zeros(1000, dtype='d')

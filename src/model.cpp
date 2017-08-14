@@ -62,44 +62,12 @@ namespace observers {
 
 struct poisson {
         poisson(time_type dt) : value(0), _dt(dt) {}
-        bool operator()(state_volt_type & y,
-                        value_type th1, value_type th2,
-                        value_type omega, spike_type s) {
-                value_type mu = y[0] - y[2] - th1 - th2 - omega;
+        bool operator()(value_type mu, spike_type s) {
                 value += s * mu - _dt * std::exp(mu);
                 return std::isfinite(value);
         }
         value_type value;
         const time_type _dt;
-};
-
-struct store {
-        store(size_t N, time_type dt) :
-                _data({N, D_FULL}), _spikes(N),
-                _dptr(_data.mutable_unchecked<2>()),
-                _sptr(_spikes.mutable_unchecked<1>()),
-                _dt(dt), _idx(0) {}
-        void operator()(state_volt_type & y,
-                        value_type th1, value_type th2,
-                        value_type omega, spike_type s) {
-                _dptr(_idx, 0) = y.coeff(0);
-                _dptr(_idx, 1) = y.coeff(1);
-                _dptr(_idx, 2) = th1;
-                _dptr(_idx, 3) = th2;
-                _dptr(_idx, 4) = y.coeff(2);
-                _dptr(_idx, 5) = y.coeff(3);
-                _sptr(_idx) = s;
-                _idx += 1;
-        }
-        py::tuple data() const {
-                return py::make_tuple(_data, _spikes);
-        }
-        py::array_t<value_type> _data;
-        py::array_t<spike_type> _spikes;
-        py::detail::unchecked_mutable_reference<value_type, 2> _dptr;
-        py::detail::unchecked_mutable_reference<spike_type, 1> _sptr;
-        const time_type _dt;
-        size_t _idx;
 };
 
 }
@@ -142,45 +110,59 @@ impulse_matrix(const py::array_t<value_type> params, time_type dt)
  *
  * params: a1, a2, b, w, tm, R, t1, t2, tv, tref
  */
-template<typename Spiker, typename Observer>
-void
+template<typename Spiker>
+py::tuple
 predict(state_full_type state,
         const py::array_t<value_type> params,
         const py::array_t<value_type> current,
-        time_type dt, size_t upsample, Observer&& obs)
+        time_type dt, size_t upsample)
 {
         Spiker spiker;
         auto I = current.unchecked<1>();
         auto P = params.unchecked<1>();
-        const propmat_volt_type Aexp = impulse_matrix(params, dt);
         if (P.size() < 10)
                 throw std::domain_error("error: param array size < 10");
         const size_t N = I.size() * upsample;
         const size_t i_refrac = (int)(P[9] / dt);
+        const value_type A1 = exp(-dt / P[6]);
+        const value_type A2 = exp(-dt / P[7]);
+        const propmat_volt_type Aexp = impulse_matrix(params, dt);
 
         value_type th1(state[1]);
         value_type th2(state[2]);
         state_volt_type y(state[0], state[1], state[4], state[5]);
         value_type I_last = 0;
-        spike_type s;
+        py::array_t<value_type> Y({N, D_FULL});
+        py::array_t<spike_type> S(N);
+        auto Yptr = Y.mutable_unchecked<2>();
+        auto Sptr = S.mutable_unchecked<1>();
         size_t iref = 0;
         for (size_t i = 0; i < N; ++i) {
                 value_type It = I[i / upsample];
                 y = Aexp * y;
                 y[1] += P[4] / P[5] * (It - I_last);
+                th1 = A1 * th1;
+                th2 = A2 * th2;
                 I_last = It;
-                double h = state[2] + state[3] + state[4] + P[3];
-                if (i > iref && spiker(state[0], h, dt)) {
-                        state[2] += P[0];
-                        state[3] += P[1];
+                double h = y[2] + th1 + th2 + P[3];
+                if (i > iref && spiker(y[0], h, dt)) {
+                        th1 += P[0];
+                        th2 += P[1];
                         iref = i + i_refrac;
-                        s = 1;
+                        Sptr[i] = 1;
                 }
                 else {
-                        s = 0;
+                        Sptr[i] = 0;
                 }
-                obs(y, th1, th2, P[3], s);
+                Yptr(i, 0) = y.coeff(0);
+                Yptr(i, 1) = y.coeff(1);
+                Yptr(i, 2) = th1;
+                Yptr(i, 3) = th2;
+                Yptr(i, 4) = y.coeff(2);
+                Yptr(i, 5) = y.coeff(3);
         }
+        return py::make_tuple(Y, S);
+
 }
 
 /**
@@ -217,7 +199,8 @@ log_intensity_fast(state_full_type state,
                 th1 = A1 * th1;
                 th2 = A2 * th2;
                 I_last = It;
-                if (!obs(y, th1, th2, P[3], S[i]))
+                value_type mu = y[0] - y[2] - th1 - th2 - P[3];
+                if (!obs(mu, S[i]))
                         break;
                 if (S[i]) {
                         th1 += P[0];
@@ -312,20 +295,12 @@ PYBIND11_PLUGIN(_model) {
               "seed the random number generator for stochastic spiking");
         m.def("impulse_matrix", &impulse_matrix, "generate impulse matrix for exact integration",
               "params"_a, "dt"_a);
-        m.def("predict", [](state_full_type state,
-                            py::array_t<value_type> params,
-                            py::array_t<value_type> current,
-                            time_type dt, size_t upsample) {
-                      observers::store observer(current.size() * upsample, dt);
-                      predict<spikers::poisson>(state, params, current, dt, upsample, observer);
-                      return observer.data();
-              },
-              "predict model response",
+        m.def("predict", &predict<spikers::deterministic>, "predict model response",
               "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
-        // m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",
-        //       "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
-        // m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
-        //       "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+        m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",
+              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+        m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
+              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_voltage", &predict_voltage, "predict voltage and coupled variables",
               "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_adaptation", &predict_adaptation);
