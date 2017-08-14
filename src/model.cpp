@@ -72,6 +72,37 @@ struct poisson {
 
 }
 
+propmat_full_type
+impulse_matrix(const py::array_t<value_type> params, time_type dt)
+{
+        auto P = params.unchecked<1>();
+        propmat_full_type Aexp;
+        Aexp.setZero();
+        value_type a1, a2, b, tm, t1, t2, tv;
+        a1 = P[0];
+        a2 = P[1];
+        b = P[2];
+        tm = P[5];
+        t1 = P[6];
+        t2 = P[7];
+        tv = P[8];
+
+        Aexp(0, 0) = exp(-dt / tm);
+        Aexp(0, 1) = tm - tm * exp(-dt / tm);
+        Aexp(1, 1) = 1;
+        Aexp(2, 2) = exp(-dt / t1);
+        Aexp(3, 3) = exp(-dt / t2);
+        Aexp(4, 0) = b*tv*(dt*tm*exp(dt/tm) - dt*tv*exp(dt/tm) + tm*tv*exp(dt/tm) - tm*tv*exp(dt/tv))*exp(-dt/tv - dt/tm)/(pow(tm, 2) - 2*tm*tv + pow(tv, 2));
+        Aexp(4, 1) = b*tm*tv*(-dt*(tm - tv)*exp(dt*(tm + tv)/(tm*tv)) + tm*tv*exp(2*dt/tv) - tm*tv*exp(dt*(tm + tv)/(tm*tv)))*exp(-dt*(2*tm + tv)/(tm*tv))/pow(tm - tv, 2);
+        Aexp(4, 4) = exp(-dt / tv);
+        Aexp(4, 5) = dt * exp(-dt / tv);
+        Aexp(5, 0) = b*tv*exp(-dt/tv)/(tm - tv) - b*tv*exp(-dt/tm)/(tm - tv);
+        Aexp(5, 1) = -b*tm*tv*exp(-dt/tv)/(tm - tv) + b*tm*tv*exp(-dt/tm)/(tm - tv);
+        Aexp(5, 5) = exp(-dt / tv);
+
+        return Aexp;
+}
+
 
 /*
  * The core of the prediction routine. You'll need to precalculate the
@@ -251,6 +282,8 @@ PYBIND11_PLUGIN(_model) {
         py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
         m.def("random_seed", &spikers::seed,
               "seed the random number generator for stochastic spiking");
+        m.def("impulse_matrix", &impulse_matrix, "generate impulse matrix for exact integration",
+              "params"_a, "dt"_a);
         m.def("predict", &predict<spikers::deterministic>, "predict model response",
               "state"_a, "impulse_matrix"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",

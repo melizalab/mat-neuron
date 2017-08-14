@@ -11,16 +11,13 @@ state = [0, 0, 0, 0, 0, 0]
 
 def test_impulse_matrix():
     """Impulse matrix should have the correct dimension and diagonal values"""
+    from mat_neuron._pymodel import impulse_matrix as imp_ref
+    from mat_neuron._model import impulse_matrix
     params = [10, 2, 0.1, 5, 10, 10, 11, 200, 5, 2]
-    Aexp = core.impulse_matrix(params, dt)
+    Aexp_ref = imp_ref(params, dt)
+    Aexp = impulse_matrix(params, dt)
     assert_equal(Aexp.shape, (6, 6))
-    Adiag = np.diag(Aexp)
-    assert_almost_equal(Adiag[0], np.exp(- dt / params[5]))
-    assert_almost_equal(Adiag[1], 1.0)
-    assert_almost_equal(Adiag[2], np.exp(- dt / params[6]))
-    assert_almost_equal(Adiag[3], np.exp(- dt / params[7]))
-    assert_almost_equal(Adiag[4], np.exp(- dt / params[8]))
-    assert_almost_equal(Adiag[5], np.exp(- dt / params[8]))
+    assert_true(np.all(np.abs(Aexp - Aexp_ref) < 1e-6))
 
 
 def test_reduced_impulse_matrix():
