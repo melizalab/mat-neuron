@@ -102,7 +102,7 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 
-VERSION = '0.3.0'
+VERSION = '0.4.0'
 cls_txt = """
 Development Status :: 3 - Alpha
 Intended Audience :: Science/Research
