@@ -3,13 +3,13 @@
 # -*- mode: python -*-
 import os
 import sys
-if sys.hexversion < 0x02070000:
-    raise RuntimeError("Python 2.7 or higher required")
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
-import sys
 import setuptools
 
+
+if sys.hexversion < 0x02070000:
+    raise RuntimeError("Python 2.7 or higher required")
 
 
 class get_pybind_include(object):

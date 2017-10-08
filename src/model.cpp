@@ -104,64 +104,59 @@ impulse_matrix(const py::array_t<value_type> params, time_type dt)
 }
 
 
-/*
- * The core of the prediction routine. You'll need to precalculate the
- * propagator/impulse matrix.
- *
- * params: a1, a2, b, w, tm, R, t1, t2, tv, tref
+/**
+ * Predict spike train. This function is intended to be usable for both the
+ * standard MAT model and the "no-membrane" MAT model that's just a
+ * specialization of the GLM. The voltage array should be the sum of all the
+ * terms that aren't spike-history-dependent. For augmented mat, this is V -
+ * β * θ_V - ω. For GLMAT, it's just V - ω. Some good wrappers at the python
+ * level will make this easier to use
  */
 template<typename Spiker>
-py::tuple
-predict(state_full_type state,
-        const py::array_t<value_type> params,
-        const py::array_t<value_type> current,
-        time_type dt, size_t upsample)
+py::array
+predict(const py::array_t<value_type> voltage,
+        const py::array_t<value_type> alphas,
+        const py::array_t<time_type> taus,
+        time_type t_refrac, time_type dt, size_t upsample)
 {
         Spiker spiker;
-        auto I = current.unchecked<1>();
-        auto P = params.unchecked<1>();
-        if (P.size() < 10)
-                throw std::domain_error("error: param array size < 10");
-        const size_t N = I.size() * upsample;
-        const size_t i_refrac = (int)(P[9] / dt);
-        const value_type A1 = exp(-dt / P[6]);
-        const value_type A2 = exp(-dt / P[7]);
-        const propmat_volt_type Aexp = impulse_matrix(params, dt);
+        auto V = voltage.unchecked<1>();
+        auto A = alphas.unchecked<1>();
+        auto T = taus.unchecked<1>();
+        const size_t NB = V.shape(0) * upsample;
+        const size_t NT = T.shape(0);
+        const size_t i_refrac = (int)(t_refrac / dt);
 
-        value_type th1(state[1]);
-        value_type th2(state[2]);
-        state_volt_type y(state[0], state[1], state[4], state[5]);
-        value_type I_last = 0;
-        py::array_t<value_type> Y({N, D_FULL});
-        py::array_t<spike_type> S(N);
-        auto Yptr = Y.mutable_unchecked<2>();
+        // initialize exponential kernels and state vector
+        value_type Ak[NT];
+        value_type h[NT];
+        for (size_t j = 0; j < NT; ++j) {
+                Ak[j] = exp(-dt / T[j]);
+                h[j] = 0;
+        }
+
+        py::array_t<spike_type> S(NB);
         auto Sptr = S.mutable_unchecked<1>();
         size_t iref = 0;
-        for (size_t i = 0; i < N; ++i) {
-                value_type It = I[i / upsample];
-                y = Aexp * y;
-                y[1] += P[4] / P[5] * (It - I_last);
-                th1 = A1 * th1;
-                th2 = A2 * th2;
-                I_last = It;
-                double h = y[2] + th1 + th2 + P[3];
-                if (i > iref && spiker(y[0], h, dt)) {
-                        th1 += P[0];
-                        th2 += P[1];
-                        iref = i + i_refrac;
-                        Sptr[i] = 1;
+        for (size_t i = 0; i < NB; ++i) {
+                value_type Vt = V[i / upsample];
+                value_type htot = 0;
+                for (size_t j = 0; j < NT; ++j) {
+                        h[j] *= Ak[j];
+                        htot += h[j];
+                }
+                if (i > iref && spiker(Vt, htot, dt)) {
+                        for (size_t j = 0; j < NT; ++j) {
+                                h[j] += A[j];
+                                iref = i + i_refrac;
+                                Sptr[i] = 1;
+                        }
                 }
                 else {
                         Sptr[i] = 0;
                 }
-                Yptr(i, 0) = y.coeff(0);
-                Yptr(i, 1) = y.coeff(1);
-                Yptr(i, 2) = th1;
-                Yptr(i, 3) = th2;
-                Yptr(i, 4) = y.coeff(2);
-                Yptr(i, 5) = y.coeff(3);
         }
-        return py::make_tuple(Y, S);
+        return S;
 
 }
 
@@ -183,8 +178,8 @@ log_intensity_fast(state_full_type state,
         auto I = current.unchecked<1>();
         auto S = spikes.unchecked<1>();
         auto P = params.unchecked<1>();
-        const propmat_volt_type Aexp = impulse_matrix(params, dt);
         const size_t N = I.size() * upsample;
+        const propmat_volt_type Aexp = impulse_matrix(params, dt);
         const value_type A1 = exp(-dt / P[6]);
         const value_type A2 = exp(-dt / P[7]);
 
@@ -210,63 +205,67 @@ log_intensity_fast(state_full_type state,
 }
 
 
+/**
+ * Compute voltage and coupled variables in response to driving
+ * current.
+ */
 py::array
-predict_voltage(state_full_type state,
-                const py::array_t<value_type> params,
-                const py::array_t<value_type> current,
-                time_type dt, size_t upsample)
+voltage(const py::array_t<value_type> current,
+        const py::array_t<value_type> params,
+        time_type dt, state_volt_type state,
+        size_t upsample)
 {
         auto I = current.unchecked<1>();
         auto P = params.unchecked<1>();
         const propmat_volt_type Aexp = impulse_matrix(params, dt);
         const size_t N = I.size() * upsample;
 
-        state_volt_type y(state[0], state[1], state[4], state[5]);
         value_type I_last = 0;
-        py::array_t<value_type> Y({N, D_VOLT});
-        auto Yptr = Y.mutable_unchecked<2>();
+        py::array_t<value_type> out({N, D_VOLT});
+        auto Y = out.mutable_unchecked<2>();
         for (size_t i = 0; i < N; ++i) {
                 value_type It = I[i / upsample];
-                y = Aexp * y;
-                y[1] += P[4] / P[5] * (It - I_last);
+                state = Aexp * state;
+                state.coeffRef(1) += P[4] / P[5] * (It - I_last);
                 I_last = It;
                 for (size_t j = 0; j < D_VOLT; ++j)
-                        Yptr(i, j) = y.coeff(j);
+                        Y(i, j) = state.coeff(j);
         }
-        return Y;
+        return out;
 }
 
-py::array
-predict_adaptation(state_full_type state,
-                   const py::array_t<value_type> params,
-                   const py::array_t<spike_type> spikes,
-                   time_type dt)
-{
-        if (params.size() < 10)
-                throw std::domain_error("error: param array size < 10");
-        auto S = spikes.unchecked<1>();
-       auto P = params.unchecked<1>();
-        const size_t N = spikes.size();
-        const value_type A1 = exp(-dt / P[6]);
-        const value_type A2 = exp(-dt / P[7]);
 
-        value_type th1(state[1]);
-        value_type th2(state[2]);
-        py::array_t<value_type> Y({N, 2});
-        auto Yptr = Y.mutable_unchecked<2>();
-        for (size_t i = 0; i < N; ++i) {
-                // spikes need to be causal, so we only add the deltas after
-                // storing the result of the filter
-                th1 = A1 * th1;
-                th2 = A2 * th2;
-                Yptr(i, 0) = th1;
-                Yptr(i, 1) = th2;
-                if (S[i]) {
-                        th1 += P[0];
-                        th2 += P[1];
+/** Computes the spike-dependent adaptation terms. Returns an ntau x nbins array*/
+py::array
+adaptation(const py::array_t<spike_type> spikes,
+           const py::array_t<time_type> taus,
+           time_type dt)
+{
+        auto S = spikes.unchecked<1>();
+        auto T = taus.unchecked<1>();
+        const size_t NB = S.shape(0);
+        const size_t NT = T.shape(0);
+
+        // initialize exponential kernels and state vector
+        value_type Ak[NT];
+        value_type h[NT];
+        for (size_t j = 0; j < NT; ++j) {
+                Ak[j] = exp(-dt / T[j]);
+                h[j] = 0;
+        }
+
+        py::array_t<value_type> out({NB, NT});
+        auto Y = out.mutable_unchecked<2>();
+        for (size_t i = 0; i < NB; ++i) {
+                for (size_t j = 0; j < NT; ++j) {
+                        // spikes need to be causal, so we only add the deltas after
+                        // storing the result of the filter
+                        h[j] *= Ak[j];
+                        Y(i, j) = h[j];
+                        h[j] += S[i];
                 }
         }
-        return Y;
+        return out;
 }
 
 py::array
@@ -289,21 +288,24 @@ log_intensity(const py::array_t<value_type> Varr,
 }
 
 
-PYBIND11_PLUGIN(_model) {
-        py::module m("_model", "multi-timescale adaptive threshold neuron model implementation");
+PYBIND11_MODULE(_model, m) {
+        m.doc() = "multi-timescale adaptive threshold neuron model implementation";
         m.def("random_seed", &spikers::seed,
               "seed the random number generator for stochastic spiking");
-        m.def("impulse_matrix", &impulse_matrix, "generate impulse matrix for exact integration",
+        m.def("impulse_matrix", &impulse_matrix,
+              "generate impulse matrix for exact integration",
               "params"_a, "dt"_a);
+        m.def("voltage", &voltage, "predict voltage and coupled variables",
+              "current"_a, "params"_a, "dt"_a,
+              py::arg_v("state", state_volt_type::Zero(), "(zeros)"),
+              py::arg("upsample") = 1);
+        m.def("adaptation", &adaptation, "spikes"_a, "taus"_a, "dt"_a);
         m.def("predict", &predict<spikers::deterministic>, "predict model response",
-              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+              "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",
-              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
+              "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
-              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
-        m.def("predict_voltage", &predict_voltage, "predict voltage and coupled variables",
-              "state"_a, "params"_a, "current"_a, "dt"_a, "upsample"_a=1);
-        m.def("predict_adaptation", &predict_adaptation);
+              "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
         m.def("log_intensity", &log_intensity);
         m.def("lci_poisson", [](state_full_type state,
                                 py::array_t<value_type> params,
@@ -319,13 +321,10 @@ PYBIND11_PLUGIN(_model) {
               "state"_a, "params"_a, "current"_a,
               "spikes"_a, "dt"_a, "upsample"_a=1);
 
-
-
 #ifdef VERSION_INFO
     m.attr("__version__") = py::str(VERSION_INFO);
 #else
     m.attr("__version__") = py::str("dev");
 #endif
 
-    return m.ptr();
 }
