@@ -165,14 +165,17 @@ predict(const py::array_t<value_type> voltage,
 /**
  * log_likelihood computes the log likelihood of a spike train conditional on
  * the model parameters. It uses an observer to accumulate values. This function
- * is intended to be as fast as possible.
+ * is intended to be as fast as possible. The voltage array should be the sum of all the
+ * terms that aren't spike-history-dependent. For augmented mat, this is V -
+ * β * θ_V - ω. For GLMAT, it's just V - ω. Some good wrappers at the python
+ * level will make this easier to use
  */
 template <typename Observer>
 typename Observer::value_type
 log_likelihood(const py::array_t<value_type> voltage,
                const py::array_t<value_type> adaptation,
                const py::array_t<spike_type> spikes,
-               const py::array_t<value_type> alphas, value_type omega,
+               const py::array_t<value_type> alphas,
                time_type dt, size_t upsample)
 {
         Observer obs(dt);
@@ -184,7 +187,7 @@ log_likelihood(const py::array_t<value_type> voltage,
         const size_t NA = H.shape(1);
 
         for (size_t i = 0; i < NT; ++i) {
-                value_type mu = V[i / upsample] - omega;
+                value_type mu = V[i / upsample];
                 for (size_t j = 0; j < NA; ++j)
                         mu -= H(i, j) * A(j);
                 if (!obs(mu, S[i]))
@@ -270,7 +273,7 @@ PYBIND11_MODULE(_model, m) {
               py::arg_v("state", state_volt_type::Zero(), "(zeros)"),
               py::arg("upsample") = 1);
         m.def("adaptation", &adaptation, "spikes"_a, "taus"_a, "dt"_a);
-        m.def("predict", &predict<spikers::deterministic>, "predict model response",
+        m.def("predict_deterministic", &predict<spikers::deterministic>, "predict model response",
               "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",
               "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
@@ -278,7 +281,7 @@ PYBIND11_MODULE(_model, m) {
               "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
         m.def("log_likelihood_poisson", &log_likelihood<observers::poisson<value_type> >,
               "calculate log likelihood of spikes conditional on parameters",
-              "voltage"_a, "adaptation"_a, "spikes"_a, "alphas"_a, "omega"_a, "dt"_a, "upsample"_a=1);
+              "voltage"_a, "adaptation"_a, "spikes"_a, "alphas"_a, "dt"_a, "upsample"_a=1);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = py::str(VERSION_INFO);

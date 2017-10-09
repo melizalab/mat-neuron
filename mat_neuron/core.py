@@ -7,10 +7,10 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 
 # import random_seed function so user can set seed
-from mat_neuron._model import random_seed, lci_poisson, impulse_matrix
+from mat_neuron._model import random_seed, impulse_matrix
 
 
-def predict(state, params, current, dt, upsample=1, stochastic=False):
+def predict(current, params, dt, upsample=1, stochastic=False):
     """Integrate model to predict spiking response
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
@@ -18,25 +18,37 @@ def predict(state, params, current, dt, upsample=1, stochastic=False):
     series of pulses, which may or may not be appropriate.
 
     parameters: 10-element sequence (α1, α2, β, ω, τm, R, τ1, τ2, τV, tref)
-    state: 5-element sequence (V, θ1, θ2, θV, ddθV) [all zeros works fine]
     current: a 1-D array of N current values
     dt: time step of forcing current, in ms
+    upsample: factor by which to upsample the current
 
-    Returns an Nx5 array of the model state variables and a list of spike
-    indices (multiply by dt to get times)
+    Returns an (N*upsample,4) array of the model state variables (V, I, θV,
+    ddθV) and an (N*upsample,) array of spikes
 
     """
     from mat_neuron import _model
+    state = _model.voltage(current, params, dt, upsample=upsample)
+    Vx = state[:, 0] - state[:, 2] - params[3]
     if not stochastic:
-        fun = _model.predict
+        fun = _model.predict_deterministic
     elif stochastic == "softmax":
         fun = _model.predict_softmax
     else:
         fun = _model.predict_poisson
-    return fun(state, params, current, dt, upsample)
+    S = fun(Vx, params[:2], params[6:8], params[8], dt)
+    return state, S
 
 
-def predict_voltage(state, params, current, dt, upsample=1):
+def log_likelihood(spikes, current, params, dt, upsample=1):
+    """Calculate log-likelihood of spikes conditional on current and parameters"""
+    from mat_neuron._model import voltage, adaptation, log_likelihood_poisson
+    state = voltage(current, params, dt, upsample=upsample)
+    adapt = adaptation(spikes, params[6:8], dt)
+    Vx = state[:, 0] - state[:, 2] - params[3]
+    return log_likelihood_poisson(Vx, adapt, spikes, params[:2], dt, upsample)
+
+
+def voltage(current, params, dt, **kwargs):
     """Integrate just the current-dependent variables.
 
     This function is usually called as a first step when evaluating the
@@ -50,25 +62,21 @@ def predict_voltage(state, params, current, dt, upsample=1):
 
     """
     from mat_neuron import _model
-    return _model.predict_voltage(state, params, current, dt, upsample)
+    return _model.voltage(current, params, dt, **kwargs)
 
 
-def predict_adaptation(state, params, spikes, dt):
-    """Predict the voltage-independent adaptation variables from known spike times.
+def adaptation(spikes, taus, dt):
+    """Calculate the voltage-independent adaptation variables from known spike times.
 
-    This function is usually called as a second step when evaluating the
-    log-likelihood of a spike train. In order for estimation to work, this
-    filter has to be *causal*, so the adaptation variables are not affected
-    until the following time bin.
+    `spikes`: an array of 0's and 1's, with 1 indicating a spike. dimension: (ndims,)
+    `taus`: a sequence of time constants
+    `dt`: the sampling rate of the spike array
 
-    See predict() for specification of params and state arguments.
-
-    `spikes`: a sequence of times (i.e., int(t / dt)) or an array of 0's and 1's.
-    `N`: must be not None if `spikes` is a sequence of times
+    Returns (nbins, ntaus) array
 
     """
     from mat_neuron import _model
-    return _model.predict_adaptation(state, params, spikes, dt)
+    return _model.adaptation(spikes, taus, dt)
 
 
 def log_intensity(V, H, params):

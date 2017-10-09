@@ -53,14 +53,17 @@ def has_flag(compiler, flagname):
     """Return a boolean indicating whether a flag name is supported on
     the specified compiler.
     """
-    import tempfile
-    with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
-        f.write('int main (int argc, char **argv) { return 0; }')
-        try:
-            compiler.compile([f.name], extra_postargs=[flagname])
-        except setuptools.distutils.errors.CompileError:
-            return False
-    return True
+    try:
+        return compiler.has_flag(flagname)
+    except AttributeError:
+        import tempfile
+        with tempfile.NamedTemporaryFile('w', suffix='.cpp') as f:
+            f.write('int main (int argc, char **argv) { return 0; }')
+            try:
+                compiler.compile([f.name], extra_postargs=[flagname])
+            except setuptools.distutils.errors.CompileError:
+                return False
+        return True
 
 
 def cpp_flag(compiler):
@@ -131,4 +134,5 @@ setup(
 
     author="Tyler Robbins",
     maintainer='C Daniel Meliza',
+    test_suite='nose.collector',
 )
