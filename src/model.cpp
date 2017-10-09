@@ -60,13 +60,15 @@ struct softmax {
 
 namespace observers {
 
+template<typename T>
 struct poisson {
+        typedef T value_type;
         poisson(time_type dt) : value(0), _dt(dt) {}
-        bool operator()(value_type mu, spike_type s) {
+        bool operator()(T mu, spike_type s) {
                 value += s * mu - _dt * std::exp(mu);
                 return std::isfinite(value);
         }
-        value_type value;
+        T value;
         const time_type _dt;
 };
 
@@ -161,47 +163,34 @@ predict(const py::array_t<value_type> voltage,
 }
 
 /**
- * log_intensity_fast computes the log intensity of a spike train conditional on
+ * log_likelihood computes the log likelihood of a spike train conditional on
  * the model parameters. It uses an observer to accumulate values. This function
- * is intended to be as fast as possible. The impulse matrix is split out into
- * the voltage-dependent and spike-history depenedent terms. There is no
- * checking of array bounds.
+ * is intended to be as fast as possible.
  */
 template <typename Observer>
-void
-log_intensity_fast(state_full_type state,
-                   py::array_t<value_type> params,
-                   py::array_t<value_type> current,
-                   py::array_t<spike_type> spikes,
-                   time_type dt, size_t upsample, Observer&& obs)
+typename Observer::value_type
+log_likelihood(const py::array_t<value_type> voltage,
+               const py::array_t<value_type> adaptation,
+               const py::array_t<spike_type> spikes,
+               const py::array_t<value_type> alphas, value_type omega,
+               time_type dt, size_t upsample)
 {
-        auto I = current.unchecked<1>();
+        Observer obs(dt);
+        auto V = voltage.unchecked<1>();
+        auto H = adaptation.unchecked<2>();
         auto S = spikes.unchecked<1>();
-        auto P = params.unchecked<1>();
-        const size_t N = I.size() * upsample;
-        const propmat_volt_type Aexp = impulse_matrix(params, dt);
-        const value_type A1 = exp(-dt / P[6]);
-        const value_type A2 = exp(-dt / P[7]);
+        auto A = alphas.unchecked<1>();
+        const size_t NT = H.shape(0);
+        const size_t NA = H.shape(1);
 
-        value_type th1(state[1]);
-        value_type th2(state[2]);
-        state_volt_type y(state[0], state[1], state[4], state[5]);
-        value_type I_last = 0;
-        for (size_t i = 0; i < N; ++i) {
-                value_type It = I[i / upsample];
-                y = Aexp * y;
-                y[1] += P[4] / P[5] * (It - I_last);
-                th1 = A1 * th1;
-                th2 = A2 * th2;
-                I_last = It;
-                value_type mu = y[0] - y[2] - th1 - th2 - P[3];
+        for (size_t i = 0; i < NT; ++i) {
+                value_type mu = V[i / upsample] - omega;
+                for (size_t j = 0; j < NA; ++j)
+                        mu -= H(i, j) * A(j);
                 if (!obs(mu, S[i]))
                         break;
-                if (S[i]) {
-                        th1 += P[0];
-                        th2 += P[1];
-                }
         }
+        return obs.value;
 }
 
 
@@ -268,25 +257,6 @@ adaptation(const py::array_t<spike_type> spikes,
         return out;
 }
 
-py::array
-log_intensity(const py::array_t<value_type> Varr,
-              const py::array_t<value_type> Harr,
-              const py::array_t<value_type> params)
-{
-        auto V = Varr.unchecked<2>();
-        auto H = Harr.unchecked<2>();
-        auto P = params.unchecked<1>();
-        const size_t N = V.shape(0);
-
-        py::array_t<value_type> Yarr(N);
-        auto Y = Yarr.mutable_unchecked<1>();
-        auto omega = P[3];
-        for (size_t i = 0; i < N; ++i) {
-                Y[i] = V(i,0) - V(i,2) - H(i,0) - H(i,1) - omega;
-        }
-        return Yarr;
-}
-
 
 PYBIND11_MODULE(_model, m) {
         m.doc() = "multi-timescale adaptive threshold neuron model implementation";
@@ -306,20 +276,9 @@ PYBIND11_MODULE(_model, m) {
               "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
               "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
-        m.def("log_intensity", &log_intensity);
-        m.def("lci_poisson", [](state_full_type state,
-                                py::array_t<value_type> params,
-                                py::array_t<value_type> current,
-                                py::array_t<int> spikes,
-                                time_type dt, size_t upsample) {
-                      observers::poisson observer(dt);
-                      log_intensity_fast(state, params, current, spikes, dt,
-                                         upsample, observer);
-                      return observer.value;
-              },
+        m.def("log_likelihood_poisson", &log_likelihood<observers::poisson<value_type> >,
               "calculate log likelihood of spikes conditional on parameters",
-              "state"_a, "params"_a, "current"_a,
-              "spikes"_a, "dt"_a, "upsample"_a=1);
+              "voltage"_a, "adaptation"_a, "spikes"_a, "alphas"_a, "omega"_a, "dt"_a, "upsample"_a=1);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = py::str(VERSION_INFO);
