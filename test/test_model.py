@@ -108,8 +108,27 @@ def test_likelihood_upsample():
 
     params_true = np.asarray([10, 2, 0, 5, 10, 10, 10, 200, 5, 2])
     Y_true, spk_v = core.predict(I, params_true, dt)
-    V = Y_true[:,0]
+    V = Y_true[:, 0]
     H = core.adaptation(spk_v, params_true[6:8], dt)
     ll = log_likelihood_poisson(V, H, spk_v, params_true[:2], dt)
     llVds = log_likelihood_poisson(V[::2], H, spk_v, params_true[:2], dt, upsample=2)
     llIds = core.log_likelihood(spk_v, I[::2], params_true, dt, upsample=2)
+
+
+def test_likelihood_nomembrane():
+    import scipy.sparse as sps
+    import mat_neuron._model as model
+    nframes = 2000
+    upsample = 6
+    a1, a2, omega, t1, t2, tref = [100, 2, 7, 10, 200, 2]
+    V = np.random.randn(nframes)
+    spikes = model.predict_poisson(V - omega, (a1, a2), (t1, t2), tref, dt, upsample)
+    spike_t = spikes.nonzero()
+    adapt = model.adaptation(spikes, (t1, t2), dt)
+
+    llf = model.log_likelihood_poisson(V - omega, adapt, spikes, (a1, a2), dt, upsample)
+
+    interp = sps.kron(sps.eye(nframes), np.ones((upsample, 1),), format='csc')
+    mu = interp.dot(V) - np.dot(adapt, (a1, a2)) - omega
+    ll = np.sum(mu[spike_t]) - dt * np.sum(np.exp(mu))
+    assert_almost_equal(llf, ll)
