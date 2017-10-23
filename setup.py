@@ -132,8 +132,9 @@ setup(
     classifiers=[x for x in cls_txt.split("\n") if x],
     install_requires=[
         "numpy>=1.10",
-        "scipy>=0.10",
-        "pybind11>=2.1"
+    ],
+    build_requires=[
+        "pybind11>=2.1",
     ],
 
     author="Tyler Robbins",
