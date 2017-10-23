@@ -41,7 +41,7 @@ ext_modules = [
     Extension(
         'mat_neuron._model',
         ['src/model.cpp'],
-        include_dirs= include_dirs,
+        include_dirs=include_dirs,
         language='c++'
     ),
 ]
@@ -98,6 +98,10 @@ class BuildExt(build_ext):
             opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
+            # if has_flag(self.compiler, '-ffast-math'):
+            #     opts.append('-ffast-math')
+            # if has_flag(self.compiler, '-flto'):
+            #     opts.append('-flto')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
         for ext in self.extensions:
@@ -105,7 +109,7 @@ class BuildExt(build_ext):
         build_ext.build_extensions(self)
 
 
-VERSION = '0.4.0'
+VERSION = '0.4.1'
 cls_txt = """
 Development Status :: 3 - Alpha
 Intended Audience :: Science/Research
@@ -120,13 +124,13 @@ setup(
     name="mat-neuron",
     version=VERSION,
     packages=find_packages(exclude=["*test*"]),
-    ext_modules = ext_modules,
+    ext_modules=ext_modules,
     cmdclass={'build_ext': BuildExt},
 
     description="Python code to integrate and evaluate likelihood for MAT neuron model",
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
     classifiers=[x for x in cls_txt.split("\n") if x],
-    install_requires = [
+    install_requires=[
         "numpy>=1.10",
         "scipy>=0.10",
         "pybind11>=2.1"

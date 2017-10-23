@@ -4,7 +4,6 @@
 This module provides functions for integrating the MAT model
 """
 from __future__ import division, print_function, absolute_import
-import numpy as np
 
 # import random_seed function so user can set seed
 from mat_neuron._model import random_seed, impulse_matrix
@@ -31,8 +30,8 @@ def predict(current, params, dt, upsample=1, stochastic=False):
     Vx = state[:, 0] - state[:, 2] - params[3]
     if not stochastic:
         fun = _model.predict_deterministic
-    elif stochastic == "softmax":
-        fun = _model.predict_softmax
+    elif stochastic == "softplus":
+        fun = _model.predict_softplus
     else:
         fun = _model.predict_poisson
     S = fun(Vx, params[:2], params[6:8], params[8], dt)

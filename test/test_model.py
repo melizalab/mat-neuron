@@ -67,14 +67,14 @@ def test_poisson_spiker():
     assert_true(np.all(S1 == S2))
 
 
-def test_softmax_spiker():
+def test_softplus_spiker():
     params = [10, 2, 0, 5, 10, 10, 10, 200, 5, 2]
     I = np.zeros(2000, dtype='d')
     I[500:1500] = 0.5
     core.random_seed(1)
-    Y, S1 = core.predict(I, params, dt, stochastic="softmax")
+    Y, S1 = core.predict(I, params, dt, stochastic="softplus")
     core.random_seed(1)
-    Y, S2 = core.predict(I, params, dt, stochastic="softmax")
+    Y, S2 = core.predict(I, params, dt, stochastic="softplus")
     assert_true(np.all(S1 == S2))
 
 

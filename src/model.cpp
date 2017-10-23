@@ -21,6 +21,11 @@ typedef Eigen::Matrix<double, D_FULL, 1> state_full_type;
 typedef Eigen::Matrix<double, D_VOLT, D_VOLT> propmat_volt_type;
 typedef Eigen::Matrix<double, D_VOLT, 1> state_volt_type;
 
+
+static constexpr value_type _softplus(value_type x) {
+        return x >= 30 ? x : std::log1p(std::exp(x));
+}
+
 namespace spikers {
 
 // all the spikers share a common RNG
@@ -41,16 +46,16 @@ struct deterministic {
 struct poisson {
         poisson() : _udist(0,1) {}
         bool operator()(value_type V, value_type H, time_type dt) {
-                value_type prob = exp(V - H) * dt;
+                value_type prob = std::exp(V - H) * dt;
                 return _udist(_generator) < prob;
         }
         std::uniform_real_distribution<double> _udist;
 };
 
-struct softmax {
-        softmax() : _udist(0,1) {}
+struct softplus {
+        softplus() : _udist(0,1) {}
         bool operator()(value_type V, value_type H, time_type dt) {
-                value_type prob = log(1 + exp(V - H)) * dt;
+                value_type prob = _softplus(V - H) * dt;
                 return _udist(_generator) < prob;
         }
         std::uniform_real_distribution<double> _udist;
@@ -80,9 +85,7 @@ impulse_matrix(const py::array_t<value_type> params, time_type dt)
         auto P = params.unchecked<1>();
         propmat_volt_type Aexp;
         Aexp.setZero();
-        value_type a1, a2, b, tm, tv;
-        a1 = P[0];
-        a2 = P[1];
+        value_type b, tm, tv;
         b = P[2];
         tm = P[5];
         // t1 = P[6];
@@ -277,11 +280,12 @@ PYBIND11_MODULE(_model, m) {
               "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
         m.def("predict_poisson", &predict<spikers::poisson>, "predict model response",
               "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
-        m.def("predict_softmax", &predict<spikers::softmax>, "predict model response",
+        m.def("predict_softplus", &predict<spikers::softplus>, "predict model response",
               "voltage"_a, "alpha"_a, "tau"_a, "t_refrac"_a, "dt"_a, "upsample"_a=1);
         m.def("log_likelihood_poisson", &log_likelihood<observers::poisson<value_type> >,
               "calculate log likelihood of spikes conditional on parameters",
               "voltage"_a, "adaptation"_a, "spikes"_a, "alphas"_a, "dt"_a, "upsample"_a=1);
+        m.def("softplus", py::vectorize(_softplus), "calculate softplus of input");
 
 #ifdef VERSION_INFO
     m.attr("__version__") = py::str(VERSION_INFO);
