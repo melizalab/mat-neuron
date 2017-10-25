@@ -134,8 +134,9 @@ setup(
         "numpy>=1.10",
     ],
     build_requires=[
-        "pybind11>=2.1",
+        "pybind11>=2.2",
     ],
+    tests_require=['nose', 'scipy'],
 
     author="Tyler Robbins",
     maintainer='C Daniel Meliza',
