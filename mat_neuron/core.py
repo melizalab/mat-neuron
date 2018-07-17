@@ -13,8 +13,6 @@ def predict(current, params, dt, upsample=1, stochastic=False):
     """Integrate model to predict spiking response
 
     This method uses the exact integration method of Rotter and Diesmann (1999).
-    Note that this implementation implicitly represents the driving current as a
-    series of pulses, which may or may not be appropriate.
 
     parameters: 10-element sequence (α1, α2, β, ω, τm, R, τ1, τ2, τV, tref)
     current: a 1-D array of N current values
@@ -88,3 +86,30 @@ def log_intensity(V, H, params):
     """
     from mat_neuron import _model
     return _model.log_intensity(V, H, params)
+
+
+class bounds_checker(object):
+    """ Function object that checks whether adaptation parameters are within allowable values
+
+    Initialization parameters:
+      tau_r - refractory period
+      taus  - tau values for adaptation terms
+
+    Call parameters:
+      alphas - alpha values for adaptation terms
+      tolerance - how close can the parameters be to the unallowed region (positive = more restrictive)
+    """
+
+    def __init__(self, tau_r, taus):
+        from math import exp
+        self._aa1 = [(1 - exp(-tau_r / tau)) for tau in taus]
+        self._aa2 = [(exp(tau_r / tau) - 1) for tau in taus]
+
+    def __call__(self, alphas, tolerance=0.01):
+        s1 = sum((a / slope) for (a, slope) in zip(alphas, self._aa1)) + tolerance
+        if s1 <= 0:
+            return False
+        s2 = sum((a / slope) for (a, slope) in zip(alphas, self._aa2)) + tolerance
+        if s2 <= 0:
+            return False
+        return True
