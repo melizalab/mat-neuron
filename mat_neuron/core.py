@@ -15,9 +15,11 @@ def predict(current, params, dt, upsample=1, stochastic=False):
     This method uses the exact integration method of Rotter and Diesmann (1999).
 
     parameters: 10-element sequence (α1, α2, β, ω, τm, R, τ1, τ2, τV, tref)
-    current: a 1-D array of N current values
-    dt: time step of forcing current, in ms
-    upsample: factor by which to upsample the current
+    current:    a 1-D array of N current values
+    dt:         time step of forcing current, in ms
+    upsample:   factor by which to upsample the current
+    stochastic: False (deterministic spiking), True (poisson spiking with log link),
+                or "softplus" (poisson spiking with softplus link)
 
     Returns an (N*upsample,4) array of the model state variables (V, I, θV,
     ddθV) and an (N*upsample,) array of spikes
