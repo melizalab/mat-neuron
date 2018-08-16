@@ -42,7 +42,7 @@ I[200:] = 0.55
 # predict() returns the full state vector (V, I, θV, ddθV) over time and a binary spike array
 # see docs for how to get stochastic spiking and higher-resolution integration steps
 Y, S = mat.predict(I, params, dt)
-spike_times = S.nonzero()[0] * dt
+spike_times = S.nonzero()[0]
 ```
 
 Calculate the log-likelihood of a spike train conditional on driving current and parameters. This function can be used in optimization problems, though it's mostly just here as a reference for a Theano implementation we use that also gives us the gradient and Hessian for efficient maximum-likelihood estimation.
