@@ -33,7 +33,7 @@ include_dirs = [get_pybind_include(),
 
 if sys.platform == 'darwin':
     include_dirs.append("/opt/local/include/eigen3")
-elif sys.platform == 'linux2':
+elif sys.platform in ('linux', 'linux2'):
     include_dirs.append("/usr/include/eigen3")
 
 
@@ -134,7 +134,7 @@ setup(
     install_requires=[
         "numpy>=1.10",
     ],
-    build_requires=[
+    setup_requires=[
         "pybind11>=2.2",
     ],
     tests_require=['scipy'],
