@@ -129,6 +129,7 @@ setup(
 
     description="Python code to integrate and evaluate likelihood for MAT neuron model",
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
+    long_description_content_type="text/markdown",
     classifiers=[x for x in cls_txt.split("\n") if x],
     install_requires=[
         "numpy>=1.10",
@@ -136,9 +137,9 @@ setup(
     build_requires=[
         "pybind11>=2.2",
     ],
-    tests_require=['nose', 'scipy'],
+    tests_require=['scipy'],
 
     author="Tyler Robbins",
     maintainer='C Daniel Meliza',
-    test_suite='nose.collector',
+    test_suite='tests',
 )
