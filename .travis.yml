@@ -1,15 +1,13 @@
 sudo: false
 language: python
 python:
-- '3.5'
 - '3.6'
 - '3.7'
 - '3.8'
-# addons:
-#   apt:
-#     packages:
-#     - liblapack-dev
-#     - libfftw3-dev
+addons:
+  apt:
+    packages:
+    - libeigen3-dev
 install:
 - pip install -r requirements.txt
 - pip install pytest
