@@ -1,2 +1,41 @@
 [build-system]
-requires = ["setuptools", "wheel", "pybind11"]
+requires = ["setuptools >= 42", "wheel", "pybind11 >= 2.10"]
+
+[project]
+name = "mat-neuron"
+authors = [
+    {name = "Dan Meliza", email = "dan@meliza.org"},
+]
+description = "Python code to integrate and evaluate likelihood for MAT neuron model"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["neuroscience", "simulation"]
+license = {text = "BSD-3-Clause"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: Unix",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Natural Language :: English",
+]
+dependencies = [
+    "numpy >= 1.22, < 2",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["pytest", "scipy"]
+
+[tool.setuptools.dynamic]
+version = {attr = "mat_neuron.__version__"}
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
