@@ -25,7 +25,7 @@ jobs:
             INSTALL_DEPS: sudo apt-get install libeigen3-dev
           - platform: macos-latest
             INSTALL_DEPS: brew install eigen
-        python-version: ["3.7"]  #, "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     runs-on: ${{ matrix.platform }}
         
     steps:
