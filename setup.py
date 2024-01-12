@@ -11,6 +11,7 @@ if sys.platform == "darwin":
     include_dirs.append("/opt/local/include/eigen3")
 elif sys.platform in ("linux", "linux2"):
     include_dirs.append("/usr/include/eigen3")
+    include_dirs.append("/usr/local/include/eigen3")
 
 ext_modules = intree_extensions(["mat_neuron/_model.cpp"])
 for module in ext_modules:
