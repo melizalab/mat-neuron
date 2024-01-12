@@ -20,16 +20,18 @@ jobs:
       fail-fast: false
       matrix:
         platform: [macos-latest, ubuntu-latest]
-        python-version: ["3.7"]  #, "3.8", "3.9", "3.10", "3.11"]
         include:
-          - os: ubuntu-latest
+          - platform: ubuntu-latest
             INSTALL_DEPS: sudo apt-get install libeigen3-dev
-          - os: macos-latest
+          - platform: macos-latest
             INSTALL_DEPS: brew install eigen
+        python-version: ["3.7"]  #, "3.8", "3.9", "3.10", "3.11"]
     runs-on: ${{ matrix.platform }}
         
     steps:
       - uses: actions/checkout@v4
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
