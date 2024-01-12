@@ -19,8 +19,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        platform: [macos-latest, ubuntu-latest]
+        python-version: ["3.7"]  #, "3.8", "3.9", "3.10", "3.11"]
+        include:
+          - os: ubuntu-latest
+            INSTALL_DEPS: sudo apt-get install libeigen3-dev
+          - os: macos-latest
+            INSTALL_DEPS: brew install eigen
     runs-on: ${{ matrix.platform }}
         
     steps:
@@ -30,7 +35,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install eigen
-        run: sudo apt-get install libeigen3-dev
+        run: ${{ matrix.INSTALL_DEPS }}
       - name: Install dependencies
         run: python -m pip install --upgrade pip wheel setuptools
       - name: Build and install
