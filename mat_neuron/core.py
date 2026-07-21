@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
 # -*- mode: python -*-
 """
 This module provides functions for integrating the MAT model
 """
 
-from __future__ import division, print_function, absolute_import
 
 # import random_seed function so user can set seed
-from mat_neuron._model import random_seed, impulse_matrix   # noqa: F401
+from mat_neuron._model import impulse_matrix, random_seed  # noqa: F401
 
 
 def predict(current, params, dt, upsample=1, stochastic=False):
@@ -42,7 +40,7 @@ def predict(current, params, dt, upsample=1, stochastic=False):
 
 def log_likelihood(spikes, current, params, dt, upsample=1):
     """Calculate log-likelihood of spikes conditional on current and parameters"""
-    from mat_neuron._model import voltage, adaptation, log_likelihood_poisson
+    from mat_neuron._model import adaptation, log_likelihood_poisson, voltage
 
     state = voltage(current, params, dt, upsample=upsample)
     adapt = adaptation(spikes, params[6:8], dt)
@@ -96,7 +94,7 @@ def log_intensity(V, H, params):
     return _model.log_intensity(V, H, params)
 
 
-class bounds_checker(object):
+class bounds_checker:
     """Function object that checks whether adaptation parameters are within allowable values
 
     Initialization parameters:
@@ -115,10 +113,10 @@ class bounds_checker(object):
         self._aa2 = [(exp(tau_r / tau) - 1) for tau in taus]
 
     def __call__(self, alphas, tolerance=0.01):
-        s1 = sum((a / slope) for (a, slope) in zip(alphas, self._aa1)) + tolerance
+        s1 = sum((a / slope) for (a, slope) in zip(alphas, self._aa1, strict=True)) + tolerance
         if s1 <= 0:
             return False
-        s2 = sum((a / slope) for (a, slope) in zip(alphas, self._aa2)) + tolerance
+        s2 = sum((a / slope) for (a, slope) in zip(alphas, self._aa2, strict=True)) + tolerance
         if s2 <= 0:
             return False
         return True

@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 # -*- mode: python -*-
 """Python reference implementations of model code"""
 
-from __future__ import division, print_function, absolute_import
 import numpy as np
 
 
@@ -10,7 +8,7 @@ def impulse_matrix_direct(params, dt):
     from numpy import exp
 
     Aexp = np.zeros((6, 6), dtype="d")
-    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
+    _a1, _a2, b, _w, _R, tm, t1, t2, tv, _tref = params
     Aexp[0, 0] = exp(-dt / tm)
     Aexp[0, 1] = tm - tm * exp(-dt / tm)
     Aexp[1, 1] = 1
@@ -55,7 +53,7 @@ def impulse_matrix(params, dt, reduced=False):
     """Calculate the matrix exponential for integration of MAT model"""
     from scipy import linalg
 
-    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
+    _a1, _a2, b, _w, _R, tm, t1, t2, tv, _tref = params
     if not reduced:
         A = -np.array(
             [
@@ -95,8 +93,8 @@ def predict(state, params, current, dt):
 
     """
     D = 6
-    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
-    v, phi, h1, h2, hv, dhv = state
+    a1, a2, _b, w, R, tm, _t1, _t2, _tv, tref = params
+    _v, _phi, _h1, _h2, _hv, _dhv = state
 
     Aexp = impulse_matrix(params, dt)
     N = current.size
@@ -132,7 +130,7 @@ def predict_voltage(state, params, current, dt):
 
     """
     D = 4
-    a1, a2, b, w, R, tm, t1, t2, tv, tref = params
+    _a1, _a2, _b, _w, R, tm, _t1, _t2, _tv, _tref = params
     Aexp = impulse_matrix(params, dt, reduced=True)
     v, phi, _, _, hv, dhv = state
     y = np.asarray([v, phi, hv, dhv], dtype="d")
@@ -158,7 +156,7 @@ def predict_adaptation(params, state, spikes, dt, N):
 
     """
     D = 2
-    a1, a2, b, w, tm, R, t1, t2, tv = params
+    a1, a2, _b, _w, _tm, _R, t1, t2, _tv = params
     _, h1, h2, _, _ = state
     # the system matrix is purely diagonal, so these are exact solutions
     A1 = np.exp(-dt / t1)
