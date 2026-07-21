@@ -1,26 +1,51 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
-""" Python reference implementations of model code"""
+"""Python reference implementations of model code"""
+
 from __future__ import division, print_function, absolute_import
 import numpy as np
 
-from mat_neuron.core import impulse_matrix
 
 def impulse_matrix_direct(params, dt):
     from numpy import exp
-    Aexp = np.zeros((6, 6), dtype='d')
+
+    Aexp = np.zeros((6, 6), dtype="d")
     a1, a2, b, w, R, tm, t1, t2, tv, tref = params
     Aexp[0, 0] = exp(-dt / tm)
     Aexp[0, 1] = tm - tm * exp(-dt / tm)
     Aexp[1, 1] = 1
     Aexp[2, 2] = exp(-dt / t1)
     Aexp[3, 3] = exp(-dt / t2)
-    Aexp[4, 0] = b*tv*(dt*tm*exp(dt/tm) - dt*tv*exp(dt/tm) + tm*tv*exp(dt/tm) - tm*tv*exp(dt/tv))*exp(-dt/tv - dt/tm)/(pow(tm, 2) - 2*tm*tv + pow(tv, 2))
-    Aexp[4, 1] = b*tm*tv*(-dt*(tm - tv)*exp(dt*(tm + tv)/(tm*tv)) + tm*tv*exp(2*dt/tv) - tm*tv*exp(dt*(tm + tv)/(tm*tv)))*exp(-dt*(2*tm + tv)/(tm*tv))/pow(tm - tv, 2)
+    Aexp[4, 0] = (
+        b
+        * tv
+        * (
+            dt * tm * exp(dt / tm)
+            - dt * tv * exp(dt / tm)
+            + tm * tv * exp(dt / tm)
+            - tm * tv * exp(dt / tv)
+        )
+        * exp(-dt / tv - dt / tm)
+        / (pow(tm, 2) - 2 * tm * tv + pow(tv, 2))
+    )
+    Aexp[4, 1] = (
+        b
+        * tm
+        * tv
+        * (
+            -dt * (tm - tv) * exp(dt * (tm + tv) / (tm * tv))
+            + tm * tv * exp(2 * dt / tv)
+            - tm * tv * exp(dt * (tm + tv) / (tm * tv))
+        )
+        * exp(-dt * (2 * tm + tv) / (tm * tv))
+        / pow(tm - tv, 2)
+    )
     Aexp[4, 4] = exp(-dt / tv)
     Aexp[4, 5] = dt * exp(-dt / tv)
-    Aexp[5, 0] = b*tv*exp(-dt/tv)/(tm - tv) - b*tv*exp(-dt/tm)/(tm - tv)
-    Aexp[5, 1] = -b*tm*tv*exp(-dt/tv)/(tm - tv) + b*tm*tv*exp(-dt/tm)/(tm - tv)
+    Aexp[5, 0] = b * tv * exp(-dt / tv) / (tm - tv) - b * tv * exp(-dt / tm) / (tm - tv)
+    Aexp[5, 1] = -b * tm * tv * exp(-dt / tv) / (tm - tv) + b * tm * tv * exp(
+        -dt / tm
+    ) / (tm - tv)
     Aexp[5, 5] = exp(-dt / tv)
 
     return Aexp
@@ -29,19 +54,28 @@ def impulse_matrix_direct(params, dt):
 def impulse_matrix(params, dt, reduced=False):
     """Calculate the matrix exponential for integration of MAT model"""
     from scipy import linalg
+
     a1, a2, b, w, R, tm, t1, t2, tv, tref = params
     if not reduced:
-        A = - np.matrix([[1 / tm, -1, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0],
-                         [0, 0, 1 / t1, 0, 0, 0],
-                         [0, 0, 0, 1 / t2, 0, 0],
-                         [0, 0, 0, 0, 1 / tv, -1],
-                         [b / tm, -b, 0, 0, 0, 1 / tv]])
+        A = -np.array(
+            [
+                [1 / tm, -1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 1 / t1, 0, 0, 0],
+                [0, 0, 0, 1 / t2, 0, 0],
+                [0, 0, 0, 0, 1 / tv, -1],
+                [b / tm, -b, 0, 0, 0, 1 / tv],
+            ]
+        )
     else:
-        A = - np.matrix([[1 / tm, -1, 0, 0],
-                         [0,       0, 0, 0],
-                         [0, 0, 1 / tv, -1],
-                         [b / tm, -b, 0, 1 / tv]])
+        A = -np.array(
+            [
+                [1 / tm, -1, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 1 / tv, -1],
+                [b / tm, -b, 0, 1 / tv],
+            ]
+        )
     return linalg.expm(A * dt)
 
 
@@ -101,10 +135,10 @@ def predict_voltage(state, params, current, dt):
     a1, a2, b, w, R, tm, t1, t2, tv, tref = params
     Aexp = impulse_matrix(params, dt, reduced=True)
     v, phi, _, _, hv, dhv = state
-    y = np.asarray([v, phi, hv, dhv], dtype='d')
+    y = np.asarray([v, phi, hv, dhv], dtype="d")
     N = current.size
-    Y = np.zeros((N, D), dtype='d')
-    x = np.zeros(D, dtype='d')
+    Y = np.zeros((N, D), dtype="d")
+    x = np.zeros(D, dtype="d")
     last_I = 0
     for i in range(N):
         x[1] = R / tm * (current[i] - last_I)
@@ -129,9 +163,9 @@ def predict_adaptation(params, state, spikes, dt, N):
     # the system matrix is purely diagonal, so these are exact solutions
     A1 = np.exp(-dt / t1)
     A2 = np.exp(-dt / t2)
-    y = np.asarray([h1, h2], dtype='d')
-    Y = np.zeros((N, D), dtype='d')
-    idx = (np.asarray(spikes) / dt).astype('i')
+    y = np.asarray([h1, h2], dtype="d")
+    Y = np.zeros((N, D), dtype="d")
+    idx = (np.asarray(spikes) / dt).astype("i")
     spk = np.zeros(N)
     spk[idx] = 1
     for i in range(N):

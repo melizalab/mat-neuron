@@ -8,4 +8,3 @@ try:
 except Exception:
     # If package is not installed (e.g. during development)
     __version__ = "unknown"
-

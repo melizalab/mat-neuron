@@ -3,10 +3,11 @@
 """
 This module provides functions for integrating the MAT model
 """
+
 from __future__ import division, print_function, absolute_import
 
 # import random_seed function so user can set seed
-from mat_neuron._model import random_seed, impulse_matrix
+from mat_neuron._model import random_seed, impulse_matrix   # noqa: F401
 
 
 def predict(current, params, dt, upsample=1, stochastic=False):
@@ -26,6 +27,7 @@ def predict(current, params, dt, upsample=1, stochastic=False):
 
     """
     from mat_neuron import _model
+
     state = _model.voltage(current, params, dt, upsample=upsample)
     Vx = state[:, 0] - state[:, 2] - params[3]
     if not stochastic:
@@ -41,6 +43,7 @@ def predict(current, params, dt, upsample=1, stochastic=False):
 def log_likelihood(spikes, current, params, dt, upsample=1):
     """Calculate log-likelihood of spikes conditional on current and parameters"""
     from mat_neuron._model import voltage, adaptation, log_likelihood_poisson
+
     state = voltage(current, params, dt, upsample=upsample)
     adapt = adaptation(spikes, params[6:8], dt)
     Vx = state[:, 0] - state[:, 2] - params[3]
@@ -61,6 +64,7 @@ def voltage(current, params, dt, **kwargs):
 
     """
     from mat_neuron import _model
+
     return _model.voltage(current, params, dt, **kwargs)
 
 
@@ -75,6 +79,7 @@ def adaptation(spikes, taus, dt):
 
     """
     from mat_neuron import _model
+
     return _model.adaptation(spikes, taus, dt)
 
 
@@ -87,11 +92,12 @@ def log_intensity(V, H, params):
 
     """
     from mat_neuron import _model
+
     return _model.log_intensity(V, H, params)
 
 
 class bounds_checker(object):
-    """ Function object that checks whether adaptation parameters are within allowable values
+    """Function object that checks whether adaptation parameters are within allowable values
 
     Initialization parameters:
       tau_r - refractory period
@@ -104,6 +110,7 @@ class bounds_checker(object):
 
     def __init__(self, tau_r, taus):
         from math import exp
+
         self._aa1 = [(1 - exp(-tau_r / tau)) for tau in taus]
         self._aa2 = [(exp(tau_r / tau) - 1) for tau in taus]
 
