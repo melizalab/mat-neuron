@@ -78,11 +78,9 @@ manylinux-i686-image = "manylinux2014"
 
 [tool.cibuildwheel.linux]
 before-all = "yum install eigen3"
-test-command = "echo 'installed'"
 
 [tool.cibuildwheel.macos]
 before-all = "brew install eigen"
-test-command = "echo 'installed'"
 
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
