@@ -3,6 +3,18 @@ project(mat_neuron LANGUAGES CXX)
 
 find_package(pybind11 CONFIG REQUIRED)
 
+if(APPLE)
+    execute_process(
+        COMMAND brew --prefix
+        OUTPUT_VARIABLE HOMEBREW_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(HOMEBREW_PREFIX)
+        list(APPEND CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}")
+    endif()
+endif()
+
 # Prefer a system Eigen3 install (this is what cibuildwheel's
 # yum/brew/apk before-all steps provide in CI)
 find_package(Eigen3 3.3 QUIET NO_MODULE)
@@ -16,6 +28,7 @@ if(NOT TARGET Eigen3::Eigen)
             /usr/include/eigen3
             /usr/local/include/eigen3
             /opt/local/include/eigen3
+	    /opt/homebrew/include/eigen3
     )
     if(NOT EIGEN3_INCLUDE_DIR)
         message(FATAL_ERROR "Eigen3 not found. Install it system-wide or "
