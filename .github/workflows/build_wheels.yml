@@ -1,11 +1,10 @@
-name: Build wheels
-
-on: [push, pull_request]
-# Alternatively, to publish when a (published) GitHub Release is created, use the following:
-# on:
-#   release:
-#     types:
-#       - published
+name: Build wheels and publish to pypi
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
 
 jobs:
   build_wheels:

@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 
-from ._version import __version__
+try:
+    from importlib.metadata import version
+
+    __version__ = version("mat-neuron")
+except Exception:
+    # If package is not installed (e.g. during development)
+    __version__ = "unknown"
+
