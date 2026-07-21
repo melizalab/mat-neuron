@@ -54,9 +54,30 @@ minimum-version = "build-system.requires"
 build-dir = "build/{wheel_tag}"
 wheel.packages = ["mat_neuron"]
 
-[tool.black]
+[tool.ruff]
 line-length = 88
-target-version = ['py310']
+target-version = "py310"
+extend-exclude = ["build", "attic", "include"]
+
+[tool.ruff.lint]
+extend-select = [
+    "F",  # pyflakes
+    "B",   # flake8-bugbear
+    "I",   # isort
+    "PGH", # pygrep-hooks
+    "RUF", # Ruff-specific
+    "UP",  # pyupgrade
+    "NPY201", # numpy 2.0
+]
+
+[tool.cibuildwheel]
+skip= "cp314t-*"
+test-requires = "pytest pytest-cov"
+test-command = "pytest {project}/test"
+manylinux-x86_64-image = "manylinux2014"
+manylinux-i686-image = "manylinux2014"
+# enable pypy builds - no longer on by default
+enable = "pypy"
 
 [tool.cibuildwheel.linux]
 before-all = "yum install eigen3"
