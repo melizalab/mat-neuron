@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools >= 42", "wheel", "pybind11 >= 2.10"]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.10"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "mat-neuron"
@@ -42,8 +43,16 @@ homepage = "https://github.com/melizalab/mat-neuron"
 
 [dependency-groups]
 dev = [
+    "pytest>=9.0.3",
+    "pytest-cov>=4.1.0",
     "ruff>=0.14.3",
+    "scipy>=1.15.3",
 ]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+wheel.packages = ["mat_neuron"]
 
 [tool.black]
 line-length = 88
