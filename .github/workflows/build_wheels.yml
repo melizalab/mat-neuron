@@ -27,6 +27,7 @@ jobs:
             sed -i -e "s/^version = \"${VERSION}\"/version = \"${VERSION}.dev${BUILD_NUM}\"/" pyproject.toml
           fi
         shell: bash
+    steps:
         uses: pypa/cibuildwheel@v3.4
         env:
           CIBW_BUILD: ${{ matrix.python }}-*
