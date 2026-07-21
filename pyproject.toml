@@ -76,16 +76,13 @@ test-command = "pytest {project}/test"
 manylinux-x86_64-image = "manylinux2014"
 manylinux-i686-image = "manylinux2014"
 
-[tool.cibuildwheel.linux]
-before-all = "yum install -y eigen3"
-
 [tool.cibuildwheel.macos]
 before-all = "brew install eigen"
 
 # make sure we have a new enough gcc to build numpy
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux*"
-before-all = "yum install -y devtoolset-11-gcc devtoolset-11-gcc-c++ && source /opt/rh/devtoolset-11/enable"
+before-all = "yum install -y eigen3 devtoolset-11-gcc devtoolset-11-gcc-c++ && source /opt/rh/devtoolset-11/enable"
 environment = { CC = "/opt/rh/devtoolset-11/root/usr/bin/gcc", CXX = "/opt/rh/devtoolset-11/root/usr/bin/g++" }
 
 [[tool.cibuildwheel.overrides]]
