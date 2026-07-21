@@ -71,13 +71,13 @@ extend-select = [
 
 [tool.cibuildwheel]
 skip= "cp314t-*"
-test-requires = "pytest pytest-cov"
+test-requires = "pytest pytest-cov scipy"
 test-command = "pytest {project}/test"
 manylinux-x86_64-image = "manylinux2014"
 manylinux-i686-image = "manylinux2014"
 
 [tool.cibuildwheel.linux]
-before-all = "yum install eigen3"
+before-all = "yum install -y eigen3"
 
 [tool.cibuildwheel.macos]
 before-all = "brew install eigen"
