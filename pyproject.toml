@@ -6,7 +6,7 @@ build-backend = "scikit_build_core.build"
 name = "mat-neuron"
 version = "0.4.4"
 description = "Python code to integrate and evaluate likelihood for MAT neuron model"
-readme = "README.md"
+readme = "README.rst"
 requires-python = ">=3.10"
 keywords = ["neuroscience", "simulation"]
 license = {text = "BSD-3-Clause"}
