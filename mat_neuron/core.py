@@ -3,7 +3,6 @@
 This module provides functions for integrating the MAT model
 """
 
-
 # import random_seed function so user can set seed
 from mat_neuron._model import impulse_matrix, random_seed  # noqa: F401
 
@@ -113,10 +112,16 @@ class bounds_checker:
         self._aa2 = [(exp(tau_r / tau) - 1) for tau in taus]
 
     def __call__(self, alphas, tolerance=0.01):
-        s1 = sum((a / slope) for (a, slope) in zip(alphas, self._aa1, strict=True)) + tolerance
+        s1 = (
+            sum((a / slope) for (a, slope) in zip(alphas, self._aa1, strict=True))
+            + tolerance
+        )
         if s1 <= 0:
             return False
-        s2 = sum((a / slope) for (a, slope) in zip(alphas, self._aa2, strict=True)) + tolerance
+        s2 = (
+            sum((a / slope) for (a, slope) in zip(alphas, self._aa2, strict=True))
+            + tolerance
+        )
         if s2 <= 0:
             return False
         return True
