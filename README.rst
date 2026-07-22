@@ -1,7 +1,7 @@
 mat-neuron
 ==========
 
-|ProjectStatus|_ |Version|_ |BuildStatus|_ |License|_ |PythonVersions|_ |DOI|
+|ProjectStatus|_ |Version|_ |BuildStatus|_ |License|_ |PythonVersions|_
 
 .. |ProjectStatus| image:: https://www.repostatus.org/badges/latest/inactive.svg
 .. _ProjectStatus: https://www.repostatus.org/#inactive
